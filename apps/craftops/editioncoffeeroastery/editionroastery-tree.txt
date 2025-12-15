@@ -1,0 +1,42 @@
+.
+├── .gitignore
+├── editionroastery-tree.txt
+├── eslint.config.js
+├── index.html
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── public
+│   └── vite.svg
+├── README.md
+├── src
+│   ├── .DS_Store
+│   ├── App.css
+│   ├── App.tsx
+│   ├── assets
+│   │   └── react.svg
+│   ├── components
+│   │   ├── CustomSelect.tsx
+│   │   ├── Layout.tsx
+│   │   └── Modal.tsx
+│   ├── context
+│   │   └── StoreContext.tsx
+│   ├── index.css
+│   ├── main.tsx
+│   └── pages
+│       ├── FinishedProductPage.tsx
+│       ├── GreenCoffeePage.tsx
+│       ├── OrdersPage.tsx
+│       ├── OverviewPage.tsx
+│       ├── PackagingPage.tsx
+│       ├── ProductionPage.tsx
+│       ├── PurchasesPage.tsx
+│       ├── RoastingPage.tsx
+│       └── Settings.tsx
+├── tailwind.config.js
+├── tsconfig.app.json
+├── tsconfig.json
+├── tsconfig.node.json
+└── vite.config.ts
+
+7 directories, 33 files

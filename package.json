@@ -1,0 +1,17 @@
+{
+  "name": "forgeops-monorepo",
+  "version": "1.0.0",
+  "description": "ForgeOps monorepo with CraftOps applications",
+  "private": true,
+  "scripts": {
+    "install:all": "cd apps/forgeops-web && npm install && cd ../craftops/editioncoffeeroastery && npm install",
+    "build:forgeops": "cd apps/forgeops-web && npm run build",
+    "build:editioncoffee": "cd apps/craftops/editioncoffeeroastery && npm run build",
+    "build:all": "npm run build:forgeops && npm run build:editioncoffee",
+    "dev:forgeops": "cd apps/forgeops-web && npm run dev",
+    "dev:editioncoffee": "cd apps/craftops/editioncoffeeroastery && npm run dev"
+  },
+  "keywords": ["forgeops", "craftops", "monorepo"],
+  "author": "",
+  "license": "ISC"
+}

@@ -1,0 +1,13 @@
+[build]
+  command = "npm run install:all && npm run build:all"
+  publish = "dist"
+
+[[redirects]]
+  from = "/craftops/editioncoffeeroastery/*"
+  to = "/craftops/editioncoffeeroastery/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
