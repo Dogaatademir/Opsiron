@@ -1,0 +1,33 @@
+.
+├── .DS_Store
+├── .gitignore
+├── eslint.config.js
+├── forgeops-tree.txt
+├── index.html
+├── package-lock.json
+├── package.json
+├── public
+│   └── ForgeOpsLogo.png
+├── README.md
+├── src
+│   ├── .DS_Store
+│   ├── App.css
+│   ├── App.jsx
+│   ├── assets
+│   │   └── ForgeOps.png
+│   ├── components
+│   │   ├── Footer.jsx
+│   │   ├── Layout.jsx
+│   │   └── Navbar.jsx
+│   ├── index.css
+│   ├── main.jsx
+│   └── pages
+│       ├── About.jsx
+│       ├── Contact.jsx
+│       ├── CraftOps.jsx
+│       ├── Home.jsx
+│       ├── Pricing.jsx
+│       └── ServeOps.jsx
+└── vite.config.js
+
+6 directories, 25 files
