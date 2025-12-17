@@ -250,8 +250,8 @@ export const OverviewPage = () => {
           </div>
         </div>
 
-        {/* BOTTOM SECTION: RECENT ACTIVITY */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* BOTTOM SECTION: ACTIVITY & INVENTORY DETAILS */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* Recent Production */}
             <div className="bg-white border border-neutral-200 p-6">
@@ -301,6 +301,31 @@ export const OverviewPage = () => {
                         </div>
                     ))}
                      {orders.filter(o => o.status !== 'Voided').length === 0 && <div className="text-neutral-400 text-sm font-light italic text-center py-4">Sipariş yok.</div>}
+                </div>
+            </div>
+
+            {/* Finished Product Detail */}
+            <div className="bg-white border border-neutral-200 p-6">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-light text-neutral-900 tracking-wide">Hazır Ürün Detay</h3>
+                    <Package size={18} className="text-neutral-400" strokeWidth={1.5}/>
+                </div>
+                <div className="space-y-4 max-h-[300px] overflow-y-auto">
+                    {finishedInventory.slice(0, 8).map(item => (
+                        <div key={item.id} className="flex justify-between items-center pb-3 border-b border-neutral-50 last:border-0 last:pb-0">
+                            <div>
+                                <div className="text-sm font-light text-neutral-900">{item.productName}</div>
+                                <div className="text-[10px] text-neutral-400 uppercase tracking-wider">
+                                  {item.brand} · {item.packSize}g
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-sm font-light text-neutral-900">{item.totalQuantity}</div>
+                                <div className="text-[10px] text-neutral-400">paket</div>
+                            </div>
+                        </div>
+                    ))}
+                    {finishedInventory.length === 0 && <div className="text-neutral-400 text-sm font-light italic text-center py-4">Stokta ürün yok.</div>}
                 </div>
             </div>
         </div>

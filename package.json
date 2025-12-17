@@ -11,7 +11,14 @@
     "dev:opsiron": "cd apps/opsiron-web && npm run dev",
     "dev:editioncoffee": "cd apps/craftops/editioncoffeeroastery && npm run dev"
   },
-  "keywords": ["opsiron", "craftops", "monorepo"],
+  "keywords": [
+    "opsiron",
+    "craftops",
+    "monorepo"
+  ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@emailjs/browser": "^4.4.1"
+  }
 }

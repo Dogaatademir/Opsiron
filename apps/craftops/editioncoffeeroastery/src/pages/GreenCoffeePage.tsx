@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Pencil, Trash2, Coffee, AlertCircle, Coins } from 'lucide-react';
+import { Search, Pencil, Trash2, Coffee, AlertCircle, Coins } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import { useStore } from '../context/StoreContext';
 import type { GreenCoffee } from '../context/StoreContext'; 
@@ -60,9 +60,7 @@ export const GreenCoffeePage = () => {
               <h1 className="text-4xl font-light tracking-tight text-neutral-900">YEŞİL ÇEKİRDEK</h1>
               <p className="text-neutral-500 mt-1 font-light">Çiğ çekirdek envanter ve maliyet yönetimi</p>
             </div>
-            <button onClick={() => openModal()} className="flex items-center justify-center gap-3 bg-neutral-900 hover:bg-neutral-800 text-white px-6 py-4 transition-all active:scale-[0.99] font-light tracking-wide">
-              <Plus size={18} strokeWidth={1.5} /> <span>YENİ STOK</span>
-            </button>
+            
           </div>
         </div>
       </div>
@@ -203,9 +201,7 @@ export const GreenCoffeePage = () => {
             <p className="text-neutral-500 text-sm max-w-xs mx-auto font-light mb-6">
               {greenCoffees.length === 0 ? "Sisteme henüz yeşil çekirdek stoğu eklenmedi." : "Arama kriterlerinize uygun stok kaydı bulunamadı."}
             </p>
-            <button onClick={() => openModal()} className="inline-flex items-center justify-center gap-2 bg-neutral-900 hover:bg-neutral-800 text-white px-6 py-3 transition-colors text-sm font-light tracking-wide">
-                <Plus size={16} strokeWidth={1.5}/> STOK EKLE
-            </button>
+         
           </div>
         )}
 

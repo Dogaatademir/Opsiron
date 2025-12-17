@@ -90,7 +90,7 @@ export interface Order {
   totalQuantity: number;
   deliveryDate?: string;
   totalAmount?: number;
-  linkedSaleId?: string; // Satış belgesi ile ilişki
+  linkedSaleId?: string; 
 }
 
 export interface Sale {
@@ -109,6 +109,7 @@ export interface Sale {
 export interface PurchaseLog {
   id: string;
   date: string;
+  dueDate?: string; 
   supplierId?: string;
   supplier: string;
   categoryId?: string; 
@@ -125,7 +126,6 @@ export interface PurchaseLog {
 type PackagingUsage = { bagId: string; frontLabelId?: string; backLabelId?: string; boxId?: string; boxCount: number; };
 
 // --- SYSTEM DEFAULTS ---
-// Dummy data'lar kaldırıldı. Sadece sistemin çalışması için gereken temel ayarlar ve kategoriler kaldı.
 
 const DEFAULT_SETTINGS: SystemSettings = { 
   companyName: 'Edition Coffee Roastery', 
@@ -227,7 +227,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     return [state, setState];
   };
 
-  // --- INITIALIZATION (Boş Array'ler ile Başlatılıyor) ---
+  // --- INITIALIZATION ---
   const [greenCoffees, setGreenCoffees] = usePersistedState<GreenCoffee[]>('greenCoffees', []);
   const [roastStocks, setRoastStocks] = usePersistedState<RoastStock[]>('roastStocks', []);
   const [recipes, setRecipes] = usePersistedState<BlendRecipe[]>('recipes', []);
@@ -240,7 +240,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [settings, setSettings] = usePersistedState<SystemSettings>('systemSettings', DEFAULT_SETTINGS);
 
   const [parties, setParties] = usePersistedState<Party[]>('parties', []);
-  const [categories, setCategories] = usePersistedState<Category[]>('categories', DEFAULT_CATEGORIES); // Kategoriler varsayılan olarak geliyor
+  const [categories, setCategories] = usePersistedState<Category[]>('categories', DEFAULT_CATEGORIES); 
   const [ledgerEntries, setLedgerEntries] = usePersistedState<LedgerEntry[]>('ledgerEntries', []);
   const [payments, setPayments] = usePersistedState<Payment[]>('payments', []);
   const [inventoryMovements, setInventoryMovements] = usePersistedState<InventoryMovement[]>('inventoryMovements', []);
@@ -330,7 +330,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
 
   // --- TRANSACTIONS ---
 
-  // 1. SATIN ALMA
+  // 1. SATIN ALMA (MALİYET HESAPLAMALI)
   const recordPurchase = (log: PurchaseLog) => {
     const logId = log.id || `PUR-${Date.now()}`;
     const date = log.date;
@@ -339,6 +339,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     const newLogWithUnitCost = { ...log, id: logId, unitCost: currentTransactionUnitCost, status: 'Active' as const };
     setPurchases(prev => [newLogWithUnitCost, ...prev]);
 
+    // Finansal Kayıt
     if (log.cost && log.cost > 0) {
       setLedgerEntries(prev => [...prev, {
         id: `LED-${Date.now()}`, date, partyId: log.supplierId, 
@@ -348,16 +349,64 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       }]);
     }
 
+    // Stok Hareketi Kaydı
     setInventoryMovements(prev => [...prev, {
         id: `MOV-PUR-${logId}`, date, itemType: log.category === 'GreenCoffee' ? 'GreenCoffee' : 'Packaging', itemId: log.itemId,
         qtyDelta: log.quantity, uom: log.category === 'GreenCoffee' ? 'kg' : 'qty', reason: 'Purchase', sourceType: 'PurchaseLog', sourceId: logId,
         unitCost: currentTransactionUnitCost, totalCost: log.cost, status: 'Active'
     }]);
 
+    // --- KRİTİK GÜNCELLEME: AĞIRLIKLI ORTALAMA MALİYET HESABI ---
     if (log.category === 'GreenCoffee') {
-      setGreenCoffees(prev => prev.map(g => g.id === log.itemId ? { ...g, stockKg: g.stockKg + log.quantity } : g));
+      setGreenCoffees(prev => prev.map(g => {
+        if (g.id === log.itemId) {
+            const currentStock = g.stockKg || 0;
+            const currentAvgCost = g.averageCost || 0;
+            
+            const currentTotalValue = currentStock * currentAvgCost;
+            const newPurchaseValue = log.cost || 0;
+            
+            const newTotalStock = currentStock + log.quantity;
+            let newAvgCost = 0;
+            
+            // Eğer yeni stok 0'dan büyükse ortalama al, yoksa 0 (bölme hatasını önle)
+            if (newTotalStock > 0) {
+                newAvgCost = (currentTotalValue + newPurchaseValue) / newTotalStock;
+            }
+
+            return { 
+                ...g, 
+                stockKg: newTotalStock,
+                averageCost: newAvgCost
+            };
+        }
+        return g;
+      }));
     } else {
-      setPackagingItems(prev => prev.map(p => p.id === log.itemId ? { ...p, stockQuantity: p.stockQuantity + log.quantity } : p));
+      // Aynı işlemi Packaging için de yapıyoruz
+      setPackagingItems(prev => prev.map(p => {
+        if (p.id === log.itemId) {
+            const currentStock = p.stockQuantity || 0;
+            const currentAvgCost = p.averageCost || 0;
+
+            const currentTotalValue = currentStock * currentAvgCost;
+            const newPurchaseValue = log.cost || 0;
+
+            const newTotalStock = currentStock + log.quantity;
+            let newAvgCost = 0;
+
+            if (newTotalStock > 0) {
+                newAvgCost = (currentTotalValue + newPurchaseValue) / newTotalStock;
+            }
+
+            return { 
+                ...p, 
+                stockQuantity: newTotalStock,
+                averageCost: newAvgCost
+            };
+        }
+        return p;
+      }));
     }
   };
 
@@ -365,6 +414,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       setPurchases(prev => prev.map(p => p.id === id ? { ...p, status: 'Voided', voidReason: reason } : p));
       voidInventoryMovementsBySource('PurchaseLog', id);
       voidLedgerEntriesBySource('PurchaseLog', id);
+      // Not: İptal durumunda ortalama maliyeti geriye döndürmek matematiksel olarak çok karmaşıktır (hangi andaki maliyeti düşeceğiz?).
+      // Basit sistemlerde genellikle stok düşülür ama maliyet "o anki ortalama" üzerinden devam eder veya manuel düzeltme gerekir.
+      // Burada sadece miktar iadesi yapılıyor (movement void ile), maliyet averageCost olarak kalıyor.
   };
 
   // 2. ÜRETİM
@@ -591,10 +643,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       }
   };
 
-// StoreContext.tsx içinde ilgili fonksiyonu bulun ve bu şekilde güncelleyin:
-
 const resetSystem = () => {
-    // 1. Tüm state'leri temizle (React ekranı zaten güncelleyecek)
     setGreenCoffees([]);
     setRoastStocks([]);
     setRecipes([]);
@@ -605,14 +654,12 @@ const resetSystem = () => {
     setQuotes([]);
     setPurchases([]);
     setParties([]);
-    setCategories(DEFAULT_CATEGORIES); // Kategorileri varsayılan yapıda tut
+    setCategories(DEFAULT_CATEGORIES);
     setLedgerEntries([]);
     setPayments([]);
     setInventoryMovements([]);
     
-    // 2. LocalStorage'ı da temizlediğinden emin olalım (Opsiyonel ama garanti yöntem)
     if (typeof window !== 'undefined') {
-        // usePersistedState zaten update ediyor ama hard reset için manuel temizlik iyidir
         localStorage.removeItem('greenCoffees');
         localStorage.removeItem('roastStocks');
         localStorage.removeItem('recipes');
@@ -627,9 +674,6 @@ const resetSystem = () => {
         localStorage.removeItem('payments');
         localStorage.removeItem('inventoryMovements');
     }
-
-    // DİKKAT: window.location.reload(); satırını SİLDİK.
-    // Sayfa yenilenmeyecek, böylece Settings.tsx içindeki kod akışı devam edebilecek.
 };
 
   return (

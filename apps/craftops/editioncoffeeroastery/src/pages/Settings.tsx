@@ -7,16 +7,19 @@ import {
 import { useStore } from '../context/StoreContext';
 import type { SystemSettings } from '../context/StoreContext';
 import { generateDummyData } from '../context/dummyDataGenerator'; // 1. IMPORT EKLENDİ
+import emailjs from '@emailjs/browser';
 
 export const SettingsPage = () => {
   const { 
     settings, updateSettings, importSystemData, resetSystem,
     greenCoffees, roastStocks, packagingItems, recipes, productionLogs, 
-    orders, sales, quotes, purchases, parties, categories, ledgerEntries, payments, inventoryMovements
+    orders, sales, quotes, purchases, parties, categories, ledgerEntries, payments, inventoryMovements,getPartyBalance
   } = useStore();
 
   const [formData, setFormData] = useState<SystemSettings>(settings);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     setFormData(settings);
@@ -67,34 +70,97 @@ export const SettingsPage = () => {
     }
   };
 
-  // --- RAPOR İÇERİĞİ ---
   const getReportContent = () => {
     const today = new Date().toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const line = "------------------------------------------------------------------------------------------\n";
     const doubleLine = "==========================================================================================\n";
     const pad = (str: string, length: number) => (str || "").toString().padEnd(length).slice(0, length);
 
+    // Finansal Özet Hesaplamaları
+    const activeSales = sales.filter(s => s.status === 'Active');
+    const totalRevenue = activeSales.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+    const activePayments = payments.filter(p => p.status === 'Active' && p.type === 'Inbound');
+    const totalCollections = activePayments.reduce((sum, p) => sum + p.amount, 0);
+
     let content = "";
     content += doubleLine;
-    content += ` ${formData.companyName.toUpperCase()} - DETAYLI STOK RAPORU\n`;
+    content += ` ${settings.companyName.toUpperCase()} - DETAYLI SİSTEM RAPORU\n`;
     content += ` Tarih: ${today}\n`;
     content += doubleLine + "\n";
 
-    content += "[1] YEŞİL ÇEKİRDEK STOĞU (HAM)\n" + line;
+    // 1. FİNANSAL ÖZET
+    content += "[1] FİNANSAL GENEL DURUM\n" + line;
+    content += `${pad("Toplam Satış Cirosu", 30)}: ${totalRevenue.toLocaleString('tr-TR')} ${settings.currency}\n`;
+    content += `${pad("Toplam Tahsilat", 30)}: ${totalCollections.toLocaleString('tr-TR')} ${settings.currency}\n`;
+    content += `${pad("Aktif Sipariş Sayısı", 30)}: ${orders.filter(o => o.status === 'Pending').length} Adet\n\n`;
+
+    // 2. YEŞİL ÇEKİRDEK
+    content += "[2] YEŞİL ÇEKİRDEK STOĞU\n" + line;
     content += `${pad("ÜRÜN ADI", 30)} | ${pad("MENŞEİ", 15)} | ${pad("STOK (KG)", 10)}\n` + line;
-    greenCoffees.forEach(g => { content += `${pad(g.name, 30)} | ${pad(g.origin, 15)} | ${pad(g.stockKg + " kg", 10)}\n`; });
-    content += "\n[2] KAVRULMUŞ KAHVE STOĞU\n" + line;
-    content += `${pad("ÜRÜN ADI", 30)} | ${pad("KAVURMA PROFİLİ", 20)} | ${pad("STOK (KG)", 10)}\n` + line;
-    roastStocks.forEach(r => { content += `${pad(r.name, 30)} | ${pad(r.roastLevel, 20)} | ${pad(r.stockKg + " kg", 10)}\n`; });
-    content += "\n[3] AMBALAJ\n" + line;
-    packagingItems.forEach(p => { content += `${pad(p.name, 35)} | ${pad(p.stockQuantity + " ad", 10)}\n`; });
+    greenCoffees.forEach(g => { 
+      content += `${pad(g.name, 30)} | ${pad(g.origin, 15)} | ${pad(g.stockKg.toFixed(2) + " kg", 10)}\n`; 
+    });
+
+    // 3. KAVRULMUŞ STOK
+    content += "\n[3] KAVRULMUŞ KAHVE STOĞU\n" + line;
+    content += `${pad("ÜRÜN ADI", 30)} | ${pad("PROFİL", 20)} | ${pad("STOK (KG)", 10)}\n` + line;
+    roastStocks.forEach(r => { 
+      content += `${pad(r.name, 30)} | ${pad(r.roastLevel, 20)} | ${pad(r.stockKg.toFixed(2) + " kg", 10)}\n`; 
+    });
+
+    // 4. AMBALAJ & EŞİK KONTROLÜ
+    content += "\n[4] AMBALAJ VE PAKETLEME (KRİTİK DURUM)\n" + line;
+    packagingItems.forEach(p => { 
+      const isLow = p.stockQuantity <= p.minThreshold;
+      content += `${pad(p.name, 35)} | ${pad(p.stockQuantity + " ad", 10)} ${isLow ? "[!!! DÜŞÜK]" : ""}\n`; 
+    });
+
+    // 5. MÜŞTERİ BAKİYELERİ (İLK 10)
+    content += "\n[5] MÜŞTERİ BAKİYE ÖZETİ\n" + line;
+    content += `${pad("MÜŞTERİ ADI", 35)} | ${pad("BAKİYE", 15)}\n` + line;
+    parties.filter(p => p.type === 'Customer' && p.status === 'Active').slice(0, 10).forEach(p => {
+      // getPartyBalance artık dışarıdan (useStore'dan) güvenli bir şekilde geliyor
+      const balance = getPartyBalance(p.id);
+      content += `${pad(p.name, 35)} | ${balance.toLocaleString('tr-TR')} ${settings.currency}\n`;
+    });
     
     return content;
   };
 
-  const handleSendReport = () => {
-    if (!notificationSettings.targetEmail) { alert("Lütfen e-posta giriniz."); return; }
-    window.location.href = `mailto:${notificationSettings.targetEmail}?subject=Stok Raporu&body=${encodeURIComponent(getReportContent())}`;
+  const handleSendReport = async () => {
+    if (!notificationSettings.targetEmail) { 
+      alert("Lütfen e-posta giriniz."); 
+      return; 
+    }
+    if (isSending) return;
+
+    setIsSending(true);
+
+    const templateParams = {
+      to_email: notificationSettings.targetEmail,
+      company_name: formData.companyName,
+      report_content: getReportContent(),
+      date_time: new Date().toLocaleString('tr-TR'),
+      subject: 'Stok Raporu'
+    };
+
+    try {
+      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID as string;
+      const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID as string;
+      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY as string;
+
+      if (!serviceId || !templateId || !publicKey) {
+        throw new Error('EmailJS env eksik: VITE_EMAILJS_SERVICE_ID / VITE_EMAILJS_TEMPLATE_ID / VITE_EMAILJS_PUBLIC_KEY');
+      }
+
+      await emailjs.send(serviceId, templateId, templateParams, publicKey);
+      alert("Rapor başarıyla gönderildi.");
+    } catch (err) {
+      console.error('EmailJS hata:', err);
+      alert("E-posta gönderilemedi. Console'u kontrol edin.");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   // --- EXPORT ---

@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Plus, ArrowUpRight, ArrowDownLeft, Building2, User, Ban, AlertCircle } from 'lucide-react';
+import { Plus, ArrowUpRight, ArrowDownLeft, Building2, User, Ban, AlertCircle, CalendarClock } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { Modal } from '../components/Modal';
 
 export const PaymentsPage = () => {
-  const { parties, payments, recordPayment, voidPayment, getPartyBalance } = useStore();
+  const { parties, payments, purchases, recordPayment, voidPayment, getPartyBalance } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'All' | 'Inbound' | 'Outbound'>('All');
   
@@ -37,7 +37,7 @@ export const PaymentsPage = () => {
         ...formData
     });
     setIsModalOpen(false);
-    setFormData({ ...formData, amount: 0, note: '' }); // Reset partial
+    setFormData({ ...formData, amount: 0, note: '' });
   };
 
   const handleVoidPayment = (id: string) => {
@@ -47,13 +47,37 @@ export const PaymentsPage = () => {
       }
   };
 
-  // GÜNCELLEME: İptal edilenleri (Voided) de gösteriyoruz ki kullanıcı geçmişi görebilsin.
-  // Tarihe göre yeniden eskiye sıralama ekledik.
   const filteredPayments = payments
     .filter(p => activeTab === 'All' || p.type === activeTab)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const formatCurrency = (amount: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(amount);
+
+  // Vade Tarihi Hesaplama Yardımcısı
+  const getNextDueInfo = (partyId: string) => {
+      // Sadece aktif ve vadesi belirtilmiş satın alımları getir
+      const supplierPurchases = purchases.filter(p => 
+          p.supplierId === partyId && 
+          p.status === 'Active' && 
+          p.dueDate
+      );
+
+      // Tarihe göre sırala (En yakın tarih en üstte)
+      supplierPurchases.sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
+
+      // Bugünden sonraki (veya bugünkü) ilk vadeyi bul
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      
+      const nextDue = supplierPurchases.find(p => new Date(p.dueDate!) >= today);
+
+      if (!nextDue) return null;
+
+      return {
+          date: nextDue.dueDate,
+          amount: nextDue.cost // O faturanın/alımın toplam tutarı
+      };
+  };
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -68,28 +92,34 @@ export const PaymentsPage = () => {
          {/* CARİ BAKİYE ÖZETLERİ (KARTLAR) */}
          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-x-auto pb-2">
             {parties.filter(p => p.status === 'Active').map(party => {
-                // StoreContext güncellemesi sayesinde bu fonksiyon artık iadeleri düşerek net bakiyeyi veriyor.
                 const balance = getPartyBalance(party.id);
                 const isSupplier = party.type === 'Supplier';
                 const isCustomer = party.type === 'Customer';
                 
-                // Renk Mantığı:
+                // Borç/Alacak Renk Mantığı
                 let colorClass = 'text-neutral-500';
                 let subText = '(Dengeli)';
+                let showDueDate = false;
 
                 if (balance > 0) {
-                    if (isSupplier) { colorClass = 'text-red-600'; subText = '(Borçluyuz)'; }
+                    if (isSupplier) { 
+                        colorClass = 'text-red-600'; 
+                        subText = '(Borçluyuz)';
+                        showDueDate = true; // Tedarikçiye borç varsa vade kontrolü yap
+                    }
                     else if (isCustomer) { colorClass = 'text-green-600'; subText = '(Alacaklıyız)'; }
                     else { colorClass = 'text-green-600'; subText = '(Net Alacak)'; }
                 } else if (balance < 0) {
-                    // Negatif bakiye genelde avans veya iade fazlası demektir
                     if (isSupplier) { colorClass = 'text-green-600'; subText = '(Alacaklıyız/Avans)'; }
                     else { colorClass = 'text-red-600'; subText = '(Borçluyuz/Avans)'; }
                 }
+
+                // Vade Bilgisini Çek
+                const nextDue = showDueDate ? getNextDueInfo(party.id) : null;
                 
                 return (
-                    <div key={party.id} className="min-w-[250px] bg-white p-4 border border-neutral-200 shadow-sm flex flex-col justify-between h-32 group hover:border-neutral-400 transition-colors">
-                        <div className="flex justify-between items-start">
+                    <div key={party.id} className="min-w-[250px] bg-white p-4 border border-neutral-200 shadow-sm flex flex-col justify-between h-auto min-h-[140px] group hover:border-neutral-400 transition-colors relative">
+                        <div className="flex justify-between items-start mb-2">
                              <div className="flex items-center gap-2">
                                 <div className={`p-1.5 rounded-full ${isSupplier ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
                                     {isSupplier ? <Building2 size={16}/> : <User size={16}/>}
@@ -97,12 +127,27 @@ export const PaymentsPage = () => {
                                 <span className="text-xs font-medium uppercase tracking-wider text-neutral-500">{isSupplier ? 'Tedarikçi' : 'Müşteri'}</span>
                              </div>
                         </div>
+                        
                         <div>
                              <h3 className="text-sm font-medium text-neutral-900 truncate" title={party.name}>{party.name}</h3>
-                             <div className={`text-xl font-light mt-1 ${colorClass}`}>
-                                {formatCurrency(Math.abs(balance))} <span className="text-xs text-neutral-400">{subText}</span>
+                             <div className={`text-2xl font-light mt-1 ${colorClass}`}>
+                                {formatCurrency(Math.abs(balance))} <span className="text-xs text-neutral-400 font-normal align-middle">{subText}</span>
                              </div>
                         </div>
+
+                        {/* VADE TARİHİ ALANI - Sadece Tedarikçiye Borç Varsa ve Vade Bulunduysa */}
+                        {nextDue && (
+                            <div className="mt-4 pt-3 border-t border-neutral-100 flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-1.5 text-amber-600 font-medium">
+                                    <CalendarClock size={14} />
+                                    <span>Yaklaşan Ödeme:</span>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-neutral-900 font-semibold">{new Date(nextDue.date!).toLocaleDateString('tr-TR')}</div>
+                                    <div className="text-neutral-500">{formatCurrency(nextDue.amount!)}</div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 );
             })}

@@ -34,13 +34,15 @@ export const PurchasesPage = () => {
     quantity: number;
     cost: number;
     date: string;
+    dueDate: string; // <-- Yeni: Ödeme Vadesi
   }>({
     itemId: '',
     supplierId: '',
     categoryId: '', 
     quantity: 0,
     cost: 0,
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    dueDate: new Date().toISOString().split('T')[0] // Varsayılan: Bugün
   });
 
   const [newGreenForm, setNewGreenForm] = useState<Omit<GreenCoffee, 'id' | 'stockKg' | 'entryDate'>>({
@@ -73,7 +75,8 @@ export const PurchasesPage = () => {
         categoryId: category === 'GreenCoffee' ? 'CAT-001' : 'CAT-002', 
         quantity: 0, 
         cost: 0, 
-        date: new Date().toISOString().split('T')[0] 
+        date: new Date().toISOString().split('T')[0],
+        dueDate: new Date().toISOString().split('T')[0] // Reset durumunda da bugünü al
     });
     setNewGreenForm({ name: '', origin: '', process: '' });
     setNewPackForm({ category: 'Bag', brand: 'Genel', name: '', variant: '250g', labelType: 'Front', color: 'White' });
@@ -132,7 +135,8 @@ export const PurchasesPage = () => {
       categoryId: purchaseForm.categoryId,
       quantity: purchaseForm.quantity,
       cost: purchaseForm.cost,
-      date: purchaseForm.date
+      date: purchaseForm.date,
+      dueDate: purchaseForm.dueDate // <-- Vade tarihi eklendi
     };
 
     recordPurchase(newPurchase); 
@@ -186,9 +190,16 @@ export const PurchasesPage = () => {
                 {filteredPurchases.map((log) => (
                   <tr key={log.id} className="hover:bg-neutral-50 transition-colors">
                     <td className="px-6 py-5">
-                      <div className="flex items-center gap-2 text-neutral-600 font-light text-sm">
-                        <Calendar size={14} className="text-neutral-400" />
-                        {new Date(log.date).toLocaleDateString('tr-TR')}
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-neutral-600 font-light text-sm">
+                            <Calendar size={14} className="text-neutral-400" />
+                            {new Date(log.date).toLocaleDateString('tr-TR')}
+                        </div>
+                        {log.dueDate && (
+                           <div className="text-[10px] text-amber-600 font-medium pl-6">
+                             Vade: {new Date(log.dueDate).toLocaleDateString('tr-TR')}
+                           </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-5">
@@ -367,7 +378,17 @@ export const PurchasesPage = () => {
             <div><label className="block text-xs font-medium text-neutral-500 mb-3 uppercase tracking-wider">Miktar ({category === 'GreenCoffee' ? 'KG' : 'ADET'})</label><input required type="number" min="0.1" step="0.1" value={purchaseForm.quantity} onChange={e => setPurchaseForm({...purchaseForm, quantity: Number(e.target.value)})} className="w-full px-4 py-3 bg-white border border-neutral-300 outline-none font-light focus:border-neutral-900" /></div>
             <div><label className="block text-xs font-medium text-neutral-500 mb-3 uppercase tracking-wider">Toplam Tutar (TL)</label><input type="number" min="0" value={purchaseForm.cost} onChange={e => setPurchaseForm({...purchaseForm, cost: Number(e.target.value)})} className="w-full px-4 py-3 bg-white border border-neutral-300 outline-none font-light focus:border-neutral-900" /></div>
           </div>
-          <div><label className="block text-xs font-medium text-neutral-500 mb-3 uppercase tracking-wider">Tarih</label><input required type="date" value={purchaseForm.date} onChange={e => setPurchaseForm({...purchaseForm, date: e.target.value})} className="w-full px-4 py-3 bg-white border border-neutral-300 outline-none font-light focus:border-neutral-900" /></div>
+          
+          <div className="grid grid-cols-2 gap-6">
+             <div>
+               <label className="block text-xs font-medium text-neutral-500 mb-3 uppercase tracking-wider">İşlem Tarihi</label>
+               <input required type="date" value={purchaseForm.date} onChange={e => setPurchaseForm({...purchaseForm, date: e.target.value})} className="w-full px-4 py-3 bg-white border border-neutral-300 outline-none font-light focus:border-neutral-900" />
+             </div>
+             <div>
+               <label className="block text-xs font-medium text-neutral-500 mb-3 uppercase tracking-wider text-amber-600">Ödeme Vadesi (Son Gün)</label>
+               <input required type="date" value={purchaseForm.dueDate} onChange={e => setPurchaseForm({...purchaseForm, dueDate: e.target.value})} className="w-full px-4 py-3 bg-white border border-amber-200 outline-none font-light focus:border-amber-600 focus:bg-amber-50" />
+             </div>
+          </div>
 
           <button type="submit" className="w-full bg-neutral-900 text-white py-4 font-light tracking-wide hover:bg-neutral-800 transition-all active:scale-[0.99]">{entryMode === 'New' ? 'YENİ ÜRÜNÜ KAYDET VE SATIN AL' : 'SATIN ALIMI KAYDET VE STOĞU ARTIR'}</button>
           </form>
