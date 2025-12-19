@@ -3,13 +3,15 @@
   "version": "1.0.0",
   "description": "opsiron monorepo with CraftOps applications",
   "private": true,
- "scripts": {
-    "install:all": "cd apps/opsiron-web && npm install --legacy-peer-deps && cd ../craftops/editioncoffeeroastery && npm install --legacy-peer-deps",
+  "scripts": {
+    "install:all": "cd apps/opsiron-web && npm install --legacy-peer-deps && cd ../craftops/editioncoffeeroastery && npm install --legacy-peer-deps && cd ../aycaninsaat && npm install --legacy-peer-deps",
     "build:opsiron": "cd apps/opsiron-web && npm run build",
     "build:editioncoffee": "cd apps/craftops/editioncoffeeroastery && npm run build",
-    "build:all": "npm run build:opsiron && npm run build:editioncoffee",
+    "build:aycan": "cd apps/craftops/aycaninsaat && npm run build",
+    "build:all": "npm run build:opsiron && npm run build:editioncoffee && npm run build:aycan",
     "dev:opsiron": "cd apps/opsiron-web && npm run dev",
-    "dev:editioncoffee": "cd apps/craftops/editioncoffeeroastery && npm run dev"
+    "dev:editioncoffee": "cd apps/craftops/editioncoffeeroastery && npm run dev",
+    "dev:aycan": "cd apps/craftops/aycaninsaat && npm run dev"
   },
   "keywords": [
     "opsiron",
