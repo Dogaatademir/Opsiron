@@ -1,6 +1,47 @@
 opsiron-monorepo
 ├── apps
 │   ├── craftops
+│   │   ├── aycaninsaat
+│   │   │   ├── README.md
+│   │   │   ├── dist
+│   │   │   │   ├── assets
+│   │   │   │   │   ├── index-BZ64iBrQ.js
+│   │   │   │   │   └── index-CF2B7MBK.css
+│   │   │   │   ├── index.html
+│   │   │   │   └── vite.svg
+│   │   │   ├── eslint.config.js
+│   │   │   ├── index.html
+│   │   │   ├── package-lock.json
+│   │   │   ├── package.json
+│   │   │   ├── postcss.config.js
+│   │   │   ├── public
+│   │   │   │   └── vite.svg
+│   │   │   ├── src
+│   │   │   │   ├── App.css
+│   │   │   │   ├── App.tsx
+│   │   │   │   ├── assets
+│   │   │   │   │   └── react.svg
+│   │   │   │   ├── components
+│   │   │   │   │   ├── CustomSelect.tsx
+│   │   │   │   │   └── Layout.tsx
+│   │   │   │   ├── context
+│   │   │   │   │   ├── DataContext.tsx
+│   │   │   │   │   └── mockData.ts
+│   │   │   │   ├── index.css
+│   │   │   │   ├── main.tsx
+│   │   │   │   └── pages
+│   │   │   │       ├── BorcAlacakPage.tsx
+│   │   │   │       ├── HesaplarDemo.tsx
+│   │   │   │       ├── IslemlerDemo.tsx
+│   │   │   │       ├── KisilerDemo.tsx
+│   │   │   │       ├── LoginPage.tsx
+│   │   │   │       ├── OverviewPage.tsx
+│   │   │   │       └── SettingsPage.tsx
+│   │   │   ├── tailwind.config.js
+│   │   │   ├── tsconfig.app.json
+│   │   │   ├── tsconfig.json
+│   │   │   ├── tsconfig.node.json
+│   │   │   └── vite.config.ts
 │   │   └── editioncoffeeroastery
 │   │       ├── README.md
 │   │       ├── editionroastery-tree.txt
@@ -123,6 +164,12 @@ opsiron-monorepo
 │   │   ├── trending-up-A5rlQ2MH.js
 │   │   └── validation-RI7igykx.js
 │   ├── craftops
+│   │   ├── aycaninsaat
+│   │   │   ├── assets
+│   │   │   │   ├── index-CN1-vyhD.js
+│   │   │   │   └── index-CWukfpEm.css
+│   │   │   ├── index.html
+│   │   │   └── vite.svg
 │   │   └── editioncoffeeroastery
 │   │       ├── ForgeOpsLogo.jpg
 │   │       ├── assets

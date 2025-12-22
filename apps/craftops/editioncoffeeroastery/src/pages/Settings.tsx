@@ -1,35 +1,28 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
   Settings, Save, Database, Bell, Download, Upload, Trash2, ShieldCheck, 
-  Send, Mail, Sliders, CheckCircle2, Package, Coffee, Sticker, Box, FileJson, 
-  RefreshCcw // Yeni ikon eklendi
+  Send, Mail, Sliders, CheckCircle2, Package, Coffee, Sticker, Box, FileJson, Loader2, CalendarClock
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import type { SystemSettings } from '../context/StoreContext';
-import { generateDummyData } from '../context/dummyDataGenerator'; // 1. IMPORT EKLENDİ
 import emailjs from '@emailjs/browser';
 
 export const SettingsPage = () => {
   const { 
-    settings, updateSettings, importSystemData, resetSystem,
+    settings, updateSettings, importSystemData, resetSystem, generateTextReport,
     greenCoffees, roastStocks, packagingItems, recipes, productionLogs, 
-    orders, sales, quotes, purchases, parties, categories, ledgerEntries, payments, inventoryMovements,getPartyBalance
-  } = useStore();
+    orders, sales, quotes, purchases, parties, categories, ledgerEntries, payments, inventoryMovements  } = useStore();
 
   const [formData, setFormData] = useState<SystemSettings>(settings);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isSending, setIsSending] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     setFormData(settings);
   }, [settings]);
-
-  const [notificationSettings, setNotificationSettings] = useState({
-    lowStockAlert: true,
-    productionReport: true,
-    targetEmail: 'info@editioncoffee.com'
-  });
   
   const [lastBackup, setLastBackup] = useState<string>('Henüz Alınmadı');
 
@@ -56,79 +49,8 @@ export const SettingsPage = () => {
     alert("Ayarlar başarıyla kaydedildi ve tüm sisteme uygulandı.");
   };
 
-  // --- DEMO DATA HANDLER (2. YENİ FONKSİYON) ---
-  const handleLoadDemoData = () => {
-    if (window.confirm('DİKKAT: Mevcut veriler silinecek ve 1 yıllık örnek sistem verisi yüklenecek. Onaylıyor musunuz?')) {
-      resetSystem(); // Temiz bir sayfa için önce reset
-      
-      // State güncellemesinin bitmesi için kısa bir gecikme
-      setTimeout(() => {
-        const dummyData = generateDummyData();
-        importSystemData(dummyData);
-        // importSystemData içinde zaten alert var, ekstra mesaja gerek yok
-      }, 100);
-    }
-  };
-
-  const getReportContent = () => {
-    const today = new Date().toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const line = "------------------------------------------------------------------------------------------\n";
-    const doubleLine = "==========================================================================================\n";
-    const pad = (str: string, length: number) => (str || "").toString().padEnd(length).slice(0, length);
-
-    // Finansal Özet Hesaplamaları
-    const activeSales = sales.filter(s => s.status === 'Active');
-    const totalRevenue = activeSales.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
-    const activePayments = payments.filter(p => p.status === 'Active' && p.type === 'Inbound');
-    const totalCollections = activePayments.reduce((sum, p) => sum + p.amount, 0);
-
-    let content = "";
-    content += doubleLine;
-    content += ` ${settings.companyName.toUpperCase()} - DETAYLI SİSTEM RAPORU\n`;
-    content += ` Tarih: ${today}\n`;
-    content += doubleLine + "\n";
-
-    // 1. FİNANSAL ÖZET
-    content += "[1] FİNANSAL GENEL DURUM\n" + line;
-    content += `${pad("Toplam Satış Cirosu", 30)}: ${totalRevenue.toLocaleString('tr-TR')} ${settings.currency}\n`;
-    content += `${pad("Toplam Tahsilat", 30)}: ${totalCollections.toLocaleString('tr-TR')} ${settings.currency}\n`;
-    content += `${pad("Aktif Sipariş Sayısı", 30)}: ${orders.filter(o => o.status === 'Pending').length} Adet\n\n`;
-
-    // 2. YEŞİL ÇEKİRDEK
-    content += "[2] YEŞİL ÇEKİRDEK STOĞU\n" + line;
-    content += `${pad("ÜRÜN ADI", 30)} | ${pad("MENŞEİ", 15)} | ${pad("STOK (KG)", 10)}\n` + line;
-    greenCoffees.forEach(g => { 
-      content += `${pad(g.name, 30)} | ${pad(g.origin, 15)} | ${pad(g.stockKg.toFixed(2) + " kg", 10)}\n`; 
-    });
-
-    // 3. KAVRULMUŞ STOK
-    content += "\n[3] KAVRULMUŞ KAHVE STOĞU\n" + line;
-    content += `${pad("ÜRÜN ADI", 30)} | ${pad("PROFİL", 20)} | ${pad("STOK (KG)", 10)}\n` + line;
-    roastStocks.forEach(r => { 
-      content += `${pad(r.name, 30)} | ${pad(r.roastLevel, 20)} | ${pad(r.stockKg.toFixed(2) + " kg", 10)}\n`; 
-    });
-
-    // 4. AMBALAJ & EŞİK KONTROLÜ
-    content += "\n[4] AMBALAJ VE PAKETLEME (KRİTİK DURUM)\n" + line;
-    packagingItems.forEach(p => { 
-      const isLow = p.stockQuantity <= p.minThreshold;
-      content += `${pad(p.name, 35)} | ${pad(p.stockQuantity + " ad", 10)} ${isLow ? "[!!! DÜŞÜK]" : ""}\n`; 
-    });
-
-    // 5. MÜŞTERİ BAKİYELERİ (İLK 10)
-    content += "\n[5] MÜŞTERİ BAKİYE ÖZETİ\n" + line;
-    content += `${pad("MÜŞTERİ ADI", 35)} | ${pad("BAKİYE", 15)}\n` + line;
-    parties.filter(p => p.type === 'Customer' && p.status === 'Active').slice(0, 10).forEach(p => {
-      // getPartyBalance artık dışarıdan (useStore'dan) güvenli bir şekilde geliyor
-      const balance = getPartyBalance(p.id);
-      content += `${pad(p.name, 35)} | ${balance.toLocaleString('tr-TR')} ${settings.currency}\n`;
-    });
-    
-    return content;
-  };
-
   const handleSendReport = async () => {
-    if (!notificationSettings.targetEmail) { 
+    if (!formData.targetEmail) { 
       alert("Lütfen e-posta giriniz."); 
       return; 
     }
@@ -137,11 +59,11 @@ export const SettingsPage = () => {
     setIsSending(true);
 
     const templateParams = {
-      to_email: notificationSettings.targetEmail,
+      to_email: formData.targetEmail,
       company_name: formData.companyName,
-      report_content: getReportContent(),
+      report_content: generateTextReport(),
       date_time: new Date().toLocaleString('tr-TR'),
-      subject: 'Stok Raporu'
+      subject: 'Anlık Sistem Raporu'
     };
 
     try {
@@ -197,11 +119,19 @@ export const SettingsPage = () => {
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
           try {
               const json = JSON.parse(event.target?.result as string);
-              if (window.confirm("Bu işlem mevcut verilerin üzerine yazacaktır. Devam etmek istiyor musunuz?")) {
-                  importSystemData(json);
+              if (window.confirm("DİKKAT: Bu işlem mevcut tüm veritabanını SİLECEK ve yedek dosyasındaki verileri yükleyecektir. Onaylıyor musunuz?")) {
+                  setIsRestoring(true);
+                  try {
+                      await importSystemData(json);
+                      alert("Yedek başarıyla yüklendi.");
+                  } catch (error) {
+                      alert("Yükleme sırasında bir hata oluştu. Verilerin bir kısmı yüklenmiş olabilir.");
+                  } finally {
+                      setIsRestoring(false);
+                  }
               }
           } catch (err) {
               alert("Dosya okunamadı veya format hatalı.");
@@ -212,9 +142,17 @@ export const SettingsPage = () => {
   };
 
   // --- SIFIRLAMA ---
-  const handleHardReset = () => {
-    if (window.confirm("DİKKAT: TÜM VERİLER SİLİNECEK! Bu işlem geri alınamaz. Onaylıyor musunuz?")) {
-        resetSystem();
+  const handleHardReset = async () => {
+    if (window.confirm("DİKKAT: SİSTEM FABRİKA AYARLARINA DÖNECEK!\n\nTüm Supabase veritabanı ve yerel veriler kalıcı olarak silinecek. Bu işlem geri alınamaz.\n\nOnaylıyor musunuz?")) {
+        setIsResetting(true);
+        try {
+            await resetSystem();
+            alert("Sistem başarıyla sıfırlandı.");
+        } catch (error) {
+            alert("Sıfırlama sırasında veritabanı hatası oluştu.");
+        } finally {
+            setIsResetting(false);
+        }
     }
   };
 
@@ -280,23 +218,55 @@ export const SettingsPage = () => {
                 </div>
             </div>
 
-            {/* 2. E-POSTA RAPORLAMA */}
+            {/* 2. E-POSTA VE OTOMASYON AYARLARI */}
             <div className="bg-white border border-neutral-200">
               <div className="px-6 py-4 border-b border-neutral-100 flex items-center gap-3">
                 <Bell size={18} className="text-neutral-400" strokeWidth={1.5} />
-                <h2 className="text-lg font-light tracking-tight text-neutral-900">RAPORLAMA</h2>
+                <h2 className="text-lg font-light tracking-tight text-neutral-900">RAPORLAMA & OTOMASYON</h2>
               </div>
-              <div className="p-6 space-y-4">
+              <div className="p-6 space-y-6">
+                
+                {/* E-posta Alanı */}
                 <div>
                     <label className="block text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wider">Rapor E-postası</label>
                     <div className="relative">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
-                        <input type="email" value={notificationSettings.targetEmail} onChange={(e) => setNotificationSettings({...notificationSettings, targetEmail: e.target.value})} className="w-full pl-12 pr-4 py-3 border border-neutral-200 outline-none focus:border-neutral-900 font-light" placeholder="mail@sirketiniz.com" />
+                        <input 
+                          type="email" 
+                          value={formData.targetEmail || ''} 
+                          onChange={(e) => setFormData({...formData, targetEmail: e.target.value})} 
+                          className="w-full pl-12 pr-4 py-3 border border-neutral-200 outline-none focus:border-neutral-900 font-light" 
+                          placeholder="mail@sirketiniz.com" 
+                        />
                     </div>
                 </div>
-                <div className="flex justify-end">
+
+                {/* YENİ: Otomatik Rapor Toggle */}
+                <div className="flex items-center justify-between p-4 bg-neutral-50 border border-neutral-100 rounded-sm">
+                  <div className="flex items-center gap-3">
+                    <CalendarClock size={20} className={formData.enableWeeklyReport ? "text-neutral-900" : "text-neutral-400"} />
+                    <div>
+                      <h3 className="text-sm font-medium text-neutral-900">Her Pazartesi Sistem Raporu Gönderilsin</h3>
+                      <p className="text-xs text-neutral-500 mt-1">Her Pazartesi saat 09:00'da rapor ve sistem yedeği otomatik gönderilir.</p>
+                      <p className="text-[10px] text-amber-600 mt-1">*Bu özellik için web sayfasının o saatte açık olması gerekir.</p>
+                    </div>
+                  </div>
+                  
+                  {/* Toggle Switch */}
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={formData.enableWeeklyReport || false}
+                      onChange={(e) => setFormData({...formData, enableWeeklyReport: e.target.checked})}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neutral-900"></div>
+                  </label>
+                </div>
+
+                <div className="flex justify-end pt-2">
                     <button onClick={handleSendReport} className="flex items-center gap-2 bg-white border border-neutral-300 text-neutral-700 px-4 py-2 hover:bg-neutral-50 transition-colors">
-                        <Send size={16} /> <span className="text-xs font-medium uppercase">Anlık E-posta Raporu</span>
+                        <Send size={16} /> <span className="text-xs font-medium uppercase">Anlık E-posta Raporu (Test)</span>
                     </button>
                 </div>
               </div>
@@ -319,17 +289,6 @@ export const SettingsPage = () => {
               </div>
               <div className="p-6 space-y-4">
                 
-                {/* 3. DEMO VERİ BUTONU (EKLENDİ) */}
-                <button onClick={handleLoadDemoData} className="w-full flex items-center justify-between p-4 border border-neutral-200 hover:border-purple-300 hover:bg-purple-50 transition-all text-left group">
-                  <div>
-                      <span className="flex items-center gap-2 text-neutral-900 font-medium text-sm">
-                        <RefreshCcw size={16} className="text-purple-600"/> Demo Verisi Yükle
-                      </span>
-                      <span className="text-neutral-400 text-xs font-light block mt-1">Sistemi 1 yıllık örnek veri ile doldur.</span>
-                  </div>
-                  <Database size={18} className="text-neutral-300 group-hover:text-purple-600 transition-colors" />
-                </button>
-
                 {/* BACKUP */}
                 <button onClick={handleBackup} className="w-full flex items-center justify-between p-4 border border-neutral-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-left group">
                   <div>
@@ -341,18 +300,32 @@ export const SettingsPage = () => {
 
                 {/* RESTORE */}
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
-                <button onClick={handleRestoreClick} className="w-full flex items-center justify-between p-4 border border-neutral-200 hover:border-green-300 hover:bg-green-50 transition-all text-left group">
+                <button 
+                  onClick={handleRestoreClick} 
+                  disabled={isRestoring || isResetting}
+                  className={`w-full flex items-center justify-between p-4 border border-neutral-200 transition-all text-left group ${isRestoring ? 'bg-neutral-100 cursor-not-allowed' : 'hover:border-green-300 hover:bg-green-50'}`}
+                >
                   <div>
-                      <span className="flex items-center gap-2 text-neutral-900 font-medium text-sm"><Upload size={16} className="text-green-500"/> Yedeği Geri Yükle</span>
-                      <span className="text-neutral-400 text-xs font-light block mt-1">JSON dosyasından verileri kurtar.</span>
+                      <span className="flex items-center gap-2 text-neutral-900 font-medium text-sm">
+                        {isRestoring ? <Loader2 size={16} className="animate-spin text-green-600"/> : <Upload size={16} className="text-green-500"/>}
+                        {isRestoring ? 'Yükleniyor...' : 'Yedeği Geri Yükle'}
+                      </span>
+                      <span className="text-neutral-400 text-xs font-light block mt-1">
+                        {isRestoring ? 'Veritabanı siliniyor ve yeniden yazılıyor...' : 'JSON dosyasından verileri kurtar.'}
+                      </span>
                   </div>
-                  <Upload size={18} className="text-neutral-300 group-hover:text-green-600 transition-colors" />
+                  {!isRestoring && <Upload size={18} className="text-neutral-300 group-hover:text-green-600 transition-colors" />}
                 </button>
 
                 {/* HARD RESET */}
                 <div className="pt-4 border-t border-neutral-100 mt-2">
-                  <button onClick={handleHardReset} className="w-full flex items-center justify-center gap-2 p-4 border border-red-100 bg-red-50 text-red-700 hover:bg-red-100 transition-all">
-                      <Trash2 size={16} /> <span className="font-light text-sm tracking-wide">FABRİKA AYARLARINA DÖN</span>
+                  <button 
+                    onClick={handleHardReset} 
+                    disabled={isRestoring || isResetting}
+                    className={`w-full flex items-center justify-center gap-2 p-4 border border-red-100 text-red-700 transition-all ${isResetting ? 'bg-red-50 cursor-not-allowed' : 'bg-red-50 hover:bg-red-100'}`}
+                  >
+                      {isResetting ? <Loader2 size={16} className="animate-spin"/> : <Trash2 size={16} />}
+                      <span className="font-light text-sm tracking-wide">{isResetting ? 'SIFIRLANIYOR...' : 'FABRİKA AYARLARINA DÖN'}</span>
                   </button>
                   <p className="text-center text-[10px] text-red-400 mt-2 font-light">Tüm veriler kalıcı olarak silinir.</p>
                 </div>
@@ -370,7 +343,7 @@ export const SettingsPage = () => {
                 <div className="flex justify-between border-b border-neutral-800 pb-2"><span>Üretim Kayıtları</span><span>{productionLogs.length}</span></div>
                 <div className="flex justify-between border-b border-neutral-800 pb-2"><span>Finans Kayıtları</span><span>{ledgerEntries.length}</span></div>
                 <div className="flex justify-between border-b border-neutral-800 pb-2"><span>Son Yedekleme</span><span className="text-neutral-400">{lastBackup}</span></div>
-                <div className="pt-4 text-center text-[10px] text-neutral-500">Edition Coffee Roastery v1.2.5</div>
+                <div className="pt-4 text-center text-[10px] text-neutral-500">Edition Coffee Roastery v1.2.7</div>
               </div>
             </div>
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Pencil, Trash2, Package, Sticker, Box, AlertTriangle, CheckCircle2, Coins } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Package, Sticker, Box, AlertTriangle, CheckCircle2, Coins, AlertCircle } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import { useStore } from '../context/StoreContext';
 import type { PackagingItem } from '../context/StoreContext';
@@ -39,7 +39,6 @@ export const PackagingPage = () => {
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-6 py-8 flex justify-between items-end">
             <div><h1 className="text-4xl font-light tracking-tight text-neutral-900">PAKETLEME</h1><p className="text-neutral-500 mt-1 font-light">Torba, etiket ve koli envanteri</p></div>
-            <button onClick={() => openModal()} className="flex items-center gap-3 bg-neutral-900 hover:bg-neutral-800 text-white px-6 py-4 font-light tracking-wide"><Plus size={18}/><span>YENİ MALZEME</span></button>
         </div>
       </div>
 
@@ -122,7 +121,45 @@ export const PackagingPage = () => {
             );
           })}
         </div>
-        {filteredItems.length === 0 && <div className="bg-white border border-neutral-200 p-12 text-center text-neutral-400">Malzeme Yok. <button onClick={() => openModal()} className="underline text-neutral-900 ml-1">Eklemek için tıkla</button></div>}
+
+        {/* YENİ UYARLANMIŞ BOŞ DURUM BİLEŞENİ */}
+        {filteredItems.length === 0 && (
+          <div className="bg-white border border-neutral-200 p-12 text-center">
+            <div className="w-16 h-16 bg-neutral-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-neutral-200">
+              {/* Duruma göre ikon belirleme: Arama mı yapılıyor yoksa hiç mi veri yok? */}
+              {packagingItems.filter(item => item.category === activeTab).length === 0 ? (
+                 // Kategori boşsa ilgili kategori ikonunu göster
+                 activeTab === 'Bag' ? <Package size={32} className="text-neutral-300" strokeWidth={1.5} /> :
+                 activeTab === 'Label' ? <Sticker size={32} className="text-neutral-300" strokeWidth={1.5} /> :
+                 <Box size={32} className="text-neutral-300" strokeWidth={1.5} />
+              ) : (
+                 // Veri var ama arama sonucu boşsa ünlem göster
+                 <AlertCircle size={32} className="text-neutral-300" strokeWidth={1.5} />
+              )}
+            </div>
+            
+            <h3 className="text-neutral-900 font-light text-lg mb-2 tracking-wide">
+                {packagingItems.filter(item => item.category === activeTab).length === 0 
+                    ? "HENÜZ MALZEME YOK" 
+                    : "SONUÇ BULUNAMADI"}
+            </h3>
+            
+            <p className="text-neutral-500 text-sm max-w-xs mx-auto font-light mb-6">
+              {packagingItems.filter(item => item.category === activeTab).length === 0 
+                ? `Sisteme henüz ${activeTab === 'Bag' ? 'torba' : activeTab === 'Label' ? 'etiket' : 'koli'} stoğu eklenmedi.` 
+                : "Arama kriterlerinize uygun paketleme malzemesi bulunamadı."}
+            </p>
+
+            {/* Eğer kategori boşsa veya arama sonucu yoksa hızlı ekleme butonu */}
+            <button 
+                onClick={() => openModal()} 
+                className="inline-flex items-center gap-2 px-6 py-3 bg-neutral-900 text-white text-sm font-light tracking-wide hover:bg-neutral-800 transition-all active:scale-[0.99]"
+            >
+                <Plus size={16} />
+                <span>YENİ {activeTab === 'Bag' ? 'TORBA' : activeTab === 'Label' ? 'ETİKET' : 'KOLİ'} EKLE</span>
+            </button>
+          </div>
+        )}
         
         <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "MALZEMEYİ DÜZENLE" : "YENİ MALZEME"}>
            <form onSubmit={handleSubmit} className="space-y-6">

@@ -445,7 +445,7 @@ export default function IslemlerDemo() {
              <div className="bg-neutral-50 p-6 border-b border-neutral-100 text-center">
                 <div className="mx-auto w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4"><AlertTriangle className="text-red-600" size={24} /></div>
                 <h3 className="text-lg font-light text-neutral-900 tracking-tight">EMİN MİSİNİZ?</h3>
-                <h1 className="text-lg font-light text-neutral-400 tracking-tight">Bu işlem geri alınamaz.</h1>
+                <h2 className="text-lg font-light text-neutral-400 tracking-tight">Bu işlem geri alınamaz.</h2>
                 
              </div>
              <div className="flex p-4 gap-4">

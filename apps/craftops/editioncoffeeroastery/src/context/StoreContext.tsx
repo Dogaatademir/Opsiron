@@ -1,18 +1,106 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { supabase } from './supabase';
+import emailjs from '@emailjs/browser';
 
 // --- TYPE DEFINITIONS ---
 
-export interface GreenCoffee { id: string; name: string; origin: string; process: string; stockKg: number; entryDate: string; averageCost?: number; }
-export interface RoastStock { id: string; name: string; roastLevel: 'Light' | 'Medium' | 'Dark' | 'Omni'; stockKg: number; roastDate: string; sourceGreenId?: string; unitCost?: number; }
-export interface BlendIngredient { roastId: string; ratio: number; }
-export interface BlendRecipe { id: string; name: string; description?: string; ingredients: BlendIngredient[]; }
-export interface ProductionLog { id: string; status: 'Active' | 'Voided'; voidReason?: string; voidDate?: string; date: string; productName: string; brand: 'Edition' | 'Hisaraltı'; packSize: 250 | 1000; packCount: number; totalCoffeeKg: number; unitCost?: number; totalCost?: number; }
-export interface OrderItem { sku: string; productName: string; brand: string; packSize: number; quantity: number; }
-export interface Quote { id: string; customerName: string; date: string; items: OrderItem[]; totalOfferAmount: number; estimatedCost: number; status: 'Draft' | 'Sent' | 'Accepted' | 'Rejected'; note?: string; }
-export interface PackagingItem { id: string; category: 'Bag' | 'Label' | 'Box'; brand: 'Edition' | 'Hisaraltı' | 'Genel'; name: string; variant?: string; labelType?: 'Front' | 'Back'; color?: 'White' | 'Black'; stockQuantity: number; minThreshold: number; averageCost?: number; }
-export interface ThresholdSettings { greenCoffee: { critical: number; low: number }; roastStock: { critical: number; low: number }; bag: { critical: number; low: number }; label: { critical: number; low: number }; box: { critical: number; low: number }; finishedProduct: { critical: number; low: number }; }
-export interface SystemSettings { companyName: string; currency: string; thresholds: ThresholdSettings; }
+export interface GreenCoffee {
+  id: string;
+  name: string;
+  origin: string;
+  process: string;
+  stockKg: number;
+  entryDate: string;
+  averageCost?: number;
+}
+
+export interface RoastStock {
+  id: string;
+  name: string;
+  roastLevel: 'Light' | 'Medium' | 'Dark' | 'Omni';
+  stockKg: number;
+  roastDate: string;
+  sourceGreenId?: string;
+  unitCost?: number;
+}
+
+export interface BlendIngredient {
+  roastId: string;
+  ratio: number;
+}
+
+export interface BlendRecipe {
+  id: string;
+  name: string;
+  description?: string;
+  ingredients: BlendIngredient[];
+}
+
+export interface ProductionLog {
+  id: string;
+  status: 'Active' | 'Voided';
+  voidReason?: string;
+  voidDate?: string;
+  date: string;
+  productName: string;
+  brand: 'Edition' | 'Hisaraltı';
+  packSize: 250 | 1000;
+  packCount: number;
+  totalCoffeeKg: number;
+  unitCost?: number;
+  totalCost?: number;
+}
+
+export interface OrderItem {
+  sku: string;
+  productName: string;
+  brand: string;
+  packSize: number;
+  quantity: number;
+}
+
+export interface Quote {
+  id: string;
+  customerName: string;
+  date: string;
+  items: OrderItem[];
+  totalOfferAmount: number;
+  estimatedCost: number;
+  status: 'Draft' | 'Sent' | 'Accepted' | 'Rejected';
+  note?: string;
+}
+
+export interface PackagingItem {
+  id: string;
+  category: 'Bag' | 'Label' | 'Box';
+  brand: 'Edition' | 'Hisaraltı' | 'Genel';
+  name: string;
+  variant?: string;
+  labelType?: 'Front' | 'Back';
+  color?: 'White' | 'Black';
+  stockQuantity: number;
+  minThreshold: number;
+  averageCost?: number;
+}
+
+export interface ThresholdSettings {
+  greenCoffee: { critical: number; low: number };
+  roastStock: { critical: number; low: number };
+  bag: { critical: number; low: number };
+  label: { critical: number; low: number };
+  box: { critical: number; low: number };
+  finishedProduct: { critical: number; low: number };
+}
+
+export interface SystemSettings {
+  companyName: string;
+  currency: string;
+  thresholds: ThresholdSettings;
+  targetEmail?: string;
+  enableWeeklyReport: boolean;
+  lastReportDate?: string;
+}
 
 // --- FİNANS & STOK HAREKET TİPLERİ ---
 
@@ -37,13 +125,13 @@ export interface Category {
 export interface LedgerEntry {
   id: string;
   date: string;
-  partyId?: string; 
+  partyId?: string;
   categoryId: string;
-  direction: 'Debit' | 'Credit'; 
+  direction: 'Debit' | 'Credit';
   amount: number;
   currency: 'TRY';
   sourceType: 'Purchase' | 'Sale' | 'Payment' | 'Adjustment';
-  sourceId: string; 
+  sourceId: string;
   note?: string;
   status: 'Active' | 'Voided';
 }
@@ -52,7 +140,7 @@ export interface Payment {
   id: string;
   date: string;
   partyId: string;
-  type: 'Inbound' | 'Outbound'; 
+  type: 'Inbound' | 'Outbound';
   method: 'Cash' | 'Bank' | 'Card' | 'Other';
   amount: number;
   currency: 'TRY';
@@ -65,21 +153,21 @@ export interface InventoryMovement {
   id: string;
   date: string;
   itemType: 'GreenCoffee' | 'RoastStock' | 'Packaging' | 'FinishedProduct';
-  itemId: string; 
+  itemId: string;
   qtyDelta: number; // Giriş (+), Çıkış (-)
-  uom: 'kg' | 'qty'; 
+  uom: 'kg' | 'qty';
   reason: 'Production' | 'Sale' | 'Purchase' | 'Usage' | 'Void' | 'Adjustment';
-  sourceType: 'ProductionLog' | 'Order' | 'PurchaseLog' | 'Manual' | 'Sale'; 
+  sourceType: 'ProductionLog' | 'Order' | 'PurchaseLog' | 'Manual' | 'Sale';
   sourceId: string;
   unitCost?: number;
-  totalCost?: number; 
+  totalCost?: number;
   status: 'Active' | 'Voided';
 }
 
 export interface Order {
   id: string;
-  customerId: string; 
-  customerName: string; 
+  customerId: string;
+  customerName: string;
   createDate: string;
   status: 'Pending' | 'Shipped' | 'Cancelled' | 'Voided';
   voidReason?: string;
@@ -90,7 +178,7 @@ export interface Order {
   totalQuantity: number;
   deliveryDate?: string;
   totalAmount?: number;
-  linkedSaleId?: string; 
+  linkedSaleId?: string;
 }
 
 export interface Sale {
@@ -109,35 +197,44 @@ export interface Sale {
 export interface PurchaseLog {
   id: string;
   date: string;
-  dueDate?: string; 
+  dueDate?: string;
   supplierId?: string;
   supplier: string;
-  categoryId?: string; 
+  categoryId?: string;
   category: 'GreenCoffee' | 'Packaging';
   itemId: string;
   itemName: string;
   quantity: number;
   cost?: number;
   unitCost?: number;
-  status?: 'Active' | 'Voided'; 
+  status?: 'Active' | 'Voided';
   voidReason?: string;
 }
 
-type PackagingUsage = { bagId: string; frontLabelId?: string; backLabelId?: string; boxId?: string; boxCount: number; };
+type PackagingUsage = {
+  bagId: string;
+  frontLabelId?: string;
+  backLabelId?: string;
+  boxId?: string;
+  boxCount: number;
+};
 
 // --- SYSTEM DEFAULTS ---
 
-const DEFAULT_SETTINGS: SystemSettings = { 
-  companyName: 'Edition Coffee Roastery', 
-  currency: 'TRY', 
-  thresholds: { 
-    greenCoffee: { critical: 50, low: 100 }, 
-    roastStock: { critical: 10, low: 20 }, 
-    bag: { critical: 100, low: 300 }, 
-    label: { critical: 200, low: 500 }, 
-    box: { critical: 50, low: 100 }, 
-    finishedProduct: { critical: 20, low: 50 } 
-  } 
+const DEFAULT_SETTINGS: SystemSettings = {
+  companyName: 'Edition Coffee Roastery',
+  currency: 'TRY',
+  targetEmail: 'info@editioncoffee.com',
+  enableWeeklyReport: false,
+  lastReportDate: '',
+  thresholds: {
+    greenCoffee: { critical: 50, low: 100 },
+    roastStock: { critical: 10, low: 20 },
+    bag: { critical: 100, low: 300 },
+    label: { critical: 200, low: 500 },
+    box: { critical: 50, low: 100 },
+    finishedProduct: { critical: 20, low: 50 },
+  },
 };
 
 const DEFAULT_CATEGORIES: Category[] = [
@@ -161,7 +258,7 @@ interface StoreContextType {
   quotes: Quote[];
   purchases: PurchaseLog[];
   settings: SystemSettings;
-  
+
   parties: Party[];
   categories: Category[];
   ledgerEntries: LedgerEntry[];
@@ -171,63 +268,79 @@ interface StoreContextType {
   addGreenCoffee: (coffee: GreenCoffee) => void;
   updateGreenCoffee: (coffee: GreenCoffee) => void;
   deleteGreenCoffee: (id: string) => void;
+
   addRoastAndDeductGreen: (roast: RoastStock, greenId: string, deductedGreenKg: number) => void;
   updateRoastStock: (roast: RoastStock) => void;
   deleteRoastStock: (id: string) => void;
+
   addRecipe: (recipe: BlendRecipe) => void;
   updateRecipe: (recipe: BlendRecipe) => void;
   deleteRecipe: (id: string) => void;
+
   addPackagingItem: (item: PackagingItem) => void;
   updatePackagingItem: (item: PackagingItem) => void;
   deletePackagingItem: (id: string) => void;
-  
-  recordProduction: (logData: Omit<ProductionLog, 'id' | 'status'>, packagingUsage: PackagingUsage, recipe?: BlendRecipe, singleOriginId?: string) => void;
+
+  recordProduction: (
+    logData: Omit<ProductionLog, 'id' | 'status'>,
+    packagingUsage: PackagingUsage,
+    recipe?: BlendRecipe,
+    singleOriginId?: string
+  ) => void;
   voidProductionLog: (id: string, reason?: string) => void;
-  
+
   addOrder: (order: Order) => void;
   shipOrder: (orderId: string, date: string) => void;
   cancelOrder: (orderId: string, reason?: string) => void;
   voidSale: (saleId: string, reason?: string) => void;
-  
+
   recordPurchase: (log: PurchaseLog) => void;
   voidPurchase: (id: string, reason?: string) => void;
-  
+
   recordPayment: (payment: Payment) => void;
   voidPayment: (id: string, reason?: string) => void;
-  
+
   addQuote: (quote: Quote) => void;
   deleteQuote: (id: string) => void;
+
   updateSettings: (newSettings: SystemSettings) => void;
+
   addParty: (party: Party) => void;
   updateParty: (party: Party) => void;
   voidParty: (id: string) => void;
+
   addCategory: (category: Category) => void;
   voidCategory: (id: string) => void;
-  
+
   getPartyBalance: (partyId: string) => number;
   getOnHand: (itemType: string, itemId: string) => number;
 
-  importSystemData: (data: any) => void;
-  resetSystem: () => void;
+  importSystemData: (data: any) => Promise<void>;
+  resetSystem: () => Promise<void>;
+  generateTextReport: () => string;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider = ({ children }: { children: ReactNode }) => {
+  // localStorage ile çalışan helper
   const usePersistedState = <T,>(key: string, initial: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
     const [state, setState] = useState<T>(() => {
-      const saved = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+      if (typeof window === 'undefined') return initial;
+      const saved = localStorage.getItem(key);
       return saved ? JSON.parse(saved) : initial;
     });
+
     useEffect(() => {
       if (typeof window !== 'undefined') {
         localStorage.setItem(key, JSON.stringify(state));
       }
     }, [key, state]);
+
     return [state, setState];
   };
 
-  // --- INITIALIZATION ---
+  // --- INITIALIZATION (LOCAL STATE) ---
   const [greenCoffees, setGreenCoffees] = usePersistedState<GreenCoffee[]>('greenCoffees', []);
   const [roastStocks, setRoastStocks] = usePersistedState<RoastStock[]>('roastStocks', []);
   const [recipes, setRecipes] = usePersistedState<BlendRecipe[]>('recipes', []);
@@ -240,236 +353,634 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [settings, setSettings] = usePersistedState<SystemSettings>('systemSettings', DEFAULT_SETTINGS);
 
   const [parties, setParties] = usePersistedState<Party[]>('parties', []);
-  const [categories, setCategories] = usePersistedState<Category[]>('categories', DEFAULT_CATEGORIES); 
+  const [categories, setCategories] = usePersistedState<Category[]>('categories', DEFAULT_CATEGORIES);
   const [ledgerEntries, setLedgerEntries] = usePersistedState<LedgerEntry[]>('ledgerEntries', []);
   const [payments, setPayments] = usePersistedState<Payment[]>('payments', []);
-  const [inventoryMovements, setInventoryMovements] = usePersistedState<InventoryMovement[]>('inventoryMovements', []);
+  const [inventoryMovements, setInventoryMovements] =
+    usePersistedState<InventoryMovement[]>('inventoryMovements', []);
 
-  // --- ACTIONS ---
-  const updateSettings = (newSettings: SystemSettings) => setSettings(newSettings);
-  const addGreenCoffee = (coffee: GreenCoffee) => setGreenCoffees(prev => [...prev, coffee]);
-  const updateGreenCoffee = (coffee: GreenCoffee) => setGreenCoffees(prev => prev.map(c => (c.id === coffee.id ? coffee : c)));
-  const deleteGreenCoffee = (id: string) => setGreenCoffees(prev => prev.filter(c => c.id !== id));
+  const isSupabaseReadyRef = useRef(false);
+
+  // --- Supabase HELPER Functions ---
+  const sbInsert = async (table: string, data: any) => {
+    if (!isSupabaseReadyRef.current) return;
+    supabase.from(table).insert(data).then(({ error }) => {
+      if (error) console.error(`Insert Error (${table}):`, error);
+    });
+  };
+
+  const sbUpdate = async (table: string, id: string, data: any) => {
+    if (!isSupabaseReadyRef.current) return;
+    supabase.from(table).update(data).eq('id', id).then(({ error }) => {
+      if (error) console.error(`Update Error (${table}):`, error);
+    });
+  };
+
+  const sbDelete = async (table: string, id: string) => {
+    if (!isSupabaseReadyRef.current) return;
+    supabase.from(table).delete().eq('id', id).then(({ error }) => {
+      if (error) console.error(`Delete Error (${table}):`, error);
+    });
+  };
+
+  // --- INITIAL LOAD FROM SUPABASE ---
+  useEffect(() => {
+    const fetchAllFromSupabase = async () => {
+      try {
+        const { data: gc } = await supabase.from('green_coffees').select('*');
+        if (gc) setGreenCoffees(gc as GreenCoffee[]);
+
+        const { data: rs } = await supabase.from('roast_stocks').select('*');
+        if (rs) setRoastStocks(rs as RoastStock[]);
+
+        const { data: rcps } = await supabase.from('blend_recipes').select('*');
+        if (rcps) setRecipes(rcps as BlendRecipe[]);
+
+        const { data: pkgs } = await supabase.from('packaging_items').select('*');
+        if (pkgs) setPackagingItems(pkgs as PackagingItem[]);
+
+        const { data: prods } = await supabase.from('production_logs').select('*');
+        if (prods) setProductionLogs(prods as ProductionLog[]);
+
+        const { data: ords } = await supabase.from('orders').select('*');
+        if (ords) setOrders(ords as Order[]);
+
+        const { data: sls } = await supabase.from('sales').select('*');
+        if (sls) setSales(sls as Sale[]);
+
+        const { data: qts } = await supabase.from('quotes').select('*');
+        if (qts) setQuotes(qts as Quote[]);
+
+        const { data: pchs } = await supabase.from('purchases').select('*');
+        if (pchs) setPurchases(pchs as PurchaseLog[]);
+
+        const { data: prts } = await supabase.from('parties').select('*');
+        if (prts) setParties(prts as Party[]);
+
+        const { data: cats } = await supabase.from('categories').select('*');
+        if (cats && cats.length > 0) setCategories(cats as Category[]);
+
+        const { data: leds } = await supabase.from('ledger_entries').select('*');
+        if (leds) setLedgerEntries(leds as LedgerEntry[]);
+
+        const { data: pays } = await supabase.from('payments').select('*');
+        if (pays) setPayments(pays as Payment[]);
+
+        const { data: invs } = await supabase.from('inventory_movements').select('*');
+        if (invs) setInventoryMovements(invs as InventoryMovement[]);
+
+        const { data: settingsRow } = await supabase
+          .from('system_settings')
+          .select('value')
+          .eq('id', 'default')
+          .maybeSingle();
+        if (settingsRow && settingsRow.value) {
+          setSettings(settingsRow.value as SystemSettings);
+        }
+
+        isSupabaseReadyRef.current = true;
+      } catch (error) {
+        console.error('Supabase initial fetch error', error);
+        isSupabaseReadyRef.current = true;
+      }
+    };
+
+    fetchAllFromSupabase();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // --- REPORTING HELPERS ---
+  const getPartyBalance = (partyId: string) => {
+    const purchasesSum = ledgerEntries
+      .filter((l) => l.partyId === partyId && l.sourceType === 'Purchase' && l.status === 'Active')
+      .reduce((sum, l) => sum + (l.direction === 'Debit' ? l.amount : -l.amount), 0);
+
+    const salesSum = ledgerEntries
+      .filter((l) => l.partyId === partyId && l.sourceType === 'Sale' && l.status === 'Active')
+      .reduce((sum, l) => sum + (l.direction === 'Credit' ? l.amount : -l.amount), 0);
+
+    const netPaymentFlow = ledgerEntries
+      .filter((l) => l.partyId === partyId && l.sourceType === 'Payment' && l.status === 'Active')
+      .reduce((sum, l) => sum + (l.direction === 'Credit' ? l.amount : -l.amount), 0);
+
+    const party = parties.find((p) => p.id === partyId);
+
+    if (party?.type === 'Supplier') {
+      return purchasesSum + netPaymentFlow;
+    } else if (party?.type === 'Customer') {
+      return salesSum - netPaymentFlow;
+    } else {
+      return (salesSum - purchasesSum) - netPaymentFlow;
+    }
+  };
+
+  const generateTextReport = () => {
+    const today = new Date().toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const line = "------------------------------------------------------------------------------------------\n";
+    const doubleLine = "==========================================================================================\n";
+    const pad = (str: string, length: number) => (str || "").toString().padEnd(length).slice(0, length);
+
+    const activeSales = sales.filter(s => s.status === 'Active');
+    const totalRevenue = activeSales.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+    const activePayments = payments.filter(p => p.status === 'Active' && p.type === 'Inbound');
+    const totalCollections = activePayments.reduce((sum, p) => sum + p.amount, 0);
+
+    let content = "";
+    content += doubleLine;
+    content += ` ${settings.companyName.toUpperCase()} - OTOMATİK SİSTEM RAPORU\n`;
+    content += ` Tarih: ${today}\n`;
+    content += doubleLine + "\n";
+    content += "[1] FİNANSAL GENEL DURUM\n" + line;
+    content += `${pad("Toplam Satış Cirosu", 30)}: ${totalRevenue.toLocaleString('tr-TR')} ${settings.currency}\n`;
+    content += `${pad("Toplam Tahsilat", 30)}: ${totalCollections.toLocaleString('tr-TR')} ${settings.currency}\n`;
+    content += `${pad("Aktif Sipariş Sayısı", 30)}: ${orders.filter(o => o.status === 'Pending').length} Adet\n\n`;
+
+    content += "[2] YEŞİL ÇEKİRDEK STOĞU\n" + line;
+    content += `${pad("ÜRÜN ADI", 30)} | ${pad("MENŞEİ", 15)} | ${pad("STOK (KG)", 10)}\n` + line;
+    greenCoffees.forEach(g => { 
+      content += `${pad(g.name, 30)} | ${pad(g.origin, 15)} | ${pad(g.stockKg.toFixed(2) + " kg", 10)}\n`; 
+    });
+
+    content += "\n[3] KAVRULMUŞ KAHVE STOĞU\n" + line;
+    content += `${pad("ÜRÜN ADI", 30)} | ${pad("PROFİL", 20)} | ${pad("STOK (KG)", 10)}\n` + line;
+    roastStocks.forEach(r => { 
+      content += `${pad(r.name, 30)} | ${pad(r.roastLevel, 20)} | ${pad(r.stockKg.toFixed(2) + " kg", 10)}\n`; 
+    });
+
+    content += "\n[4] KRİTİK AMBALAJ DURUMU\n" + line;
+    packagingItems.forEach(p => { 
+      if (p.stockQuantity <= p.minThreshold) {
+        content += `${pad(p.name, 35)} | ${pad(p.stockQuantity + " ad", 10)} [DÜŞÜK STOK]\n`; 
+      }
+    });
+    
+    return content;
+  };
+
+  // --- AUTOMATED WEEKLY REPORT LOGIC (STRICT LOCK) ---
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const checkAndSendReport = async () => {
+      if (!settings.enableWeeklyReport || !settings.targetEmail) return;
+
+      const now = new Date();
+      const currentDay = now.getDay(); // 0: Pazar, 1: Pazartesi
+      const currentHour = now.getHours();
+      const todayStr = now.toDateString();
+      
+      // 1. GÜN VE SAAT KONTROLÜ
+      if (currentDay !== 1) return; // Pazartesi değilse çık
+      if (currentHour < 9) return;  // Saat 09:00 öncesiyse çık
+
+      // 2. VERİTABANI KONTROLÜ (Daha önce atıldıysa çık)
+      if (settings.lastReportDate === todayStr) return;
+
+      // 3. TARAYICI KİLİDİ (Browser Lock Mechanism)
+      // React Strict Mode veya hızlı refreshlerde tekrar mail atmaması için
+      // localStorage üzerinden senkronize kilit kontrolü yapıyoruz.
+      const lockKey = `REPORT_SENT_LOCK_${todayStr.replace(/\s/g, '_')}`;
+      if (localStorage.getItem(lockKey)) {
+        // "Bugün için tarayıcıda mail atıldı işareti var, işlemi durdur"
+        return;
+      }
+
+      console.log("Otomatik Pazartesi Raporu Başlatılıyor...");
+
+      // Kilidi hemen koy (Diğer kopyalar buraya takılsın)
+      localStorage.setItem(lockKey, 'true');
+
+      try {
+        const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID as string;
+        const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID as string;
+        const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY as string;
+
+        if (!serviceId || !templateId || !publicKey) {
+             throw new Error("EmailJS anahtarları eksik");
+        }
+
+        const reportText = generateTextReport();
+        const fullData = {
+            timestamp: new Date().toISOString(),
+            version: "1.0",
+            settings,
+            greenCoffees, roastStocks, packagingItems, recipes, productionLogs, 
+            orders, sales, quotes, purchases, parties, categories, ledgerEntries, payments, inventoryMovements
+        };
+        const jsonString = JSON.stringify(fullData, null, 2);
+        
+        const templateParams = {
+          to_email: settings.targetEmail,
+          company_name: settings.companyName,
+          report_content: reportText,
+          date_time: new Date().toLocaleString('tr-TR'),
+          subject: `[OTOMATİK] ${settings.companyName} Haftalık Sistem Raporu & Yedek`,
+          my_file: {
+              name: `Backup_${todayStr}.json`,
+              data: btoa(unescape(encodeURIComponent(jsonString)))
+          }
+        };
+
+        await emailjs.send(serviceId, templateId, templateParams, publicKey);
+        console.log("Otomatik rapor başarıyla gönderildi.");
+
+        // Başarılı olursa Supabase/State güncelle
+        const newSettings = { ...settings, lastReportDate: todayStr };
+        setSettings(newSettings);
+        
+        if (isSupabaseReadyRef.current) {
+            supabase.from('system_settings').upsert({
+              id: 'default',
+              value: newSettings,
+              updated_at: new Date().toISOString(),
+            }).then();
+        }
+
+      } catch (error) {
+        console.error("Otomatik rapor gönderme hatası:", error);
+        // Hata durumunda kilidi aç ki sonra tekrar deneyebilsin
+        localStorage.removeItem(lockKey);
+      }
+    };
+
+    // İlk yüklemede kontrol et
+    checkAndSendReport();
+
+    // Her 60 saniyede bir kontrol et
+    const intervalId = setInterval(checkAndSendReport, 60000);
+
+    return () => clearInterval(intervalId);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.enableWeeklyReport, settings.lastReportDate, settings.targetEmail]); 
+
+  // --- ACTIONS (Optimized: Direct Supabase Calls) ---
+
+  const updateSettings = (newSettings: SystemSettings) => {
+    setSettings(newSettings);
+    if (isSupabaseReadyRef.current) {
+      supabase.from('system_settings').upsert({
+        id: 'default',
+        value: newSettings,
+        updated_at: new Date().toISOString(),
+      }).then();
+    }
+  };
+
+  const addGreenCoffee = (coffee: GreenCoffee) => {
+    setGreenCoffees((prev) => [...prev, coffee]);
+    sbInsert('green_coffees', coffee);
+  };
+
+  const updateGreenCoffee = (coffee: GreenCoffee) => {
+    setGreenCoffees((prev) => prev.map((c) => (c.id === coffee.id ? coffee : c)));
+    sbUpdate('green_coffees', coffee.id, coffee);
+  };
+
+  const deleteGreenCoffee = (id: string) => {
+    setGreenCoffees((prev) => prev.filter((c) => c.id !== id));
+    sbDelete('green_coffees', id);
+  };
 
   const addRoastAndDeductGreen = (roast: RoastStock, greenId: string, deductedGreenKg: number) => {
-    const green = greenCoffees.find(g => g.id === greenId);
+    const green = greenCoffees.find((g) => g.id === greenId);
     if (!green) return;
-    if (green.stockKg < deductedGreenKg) { alert(`Yetersiz yeşil çekirdek.`); return; }
-    
+    if (green.stockKg < deductedGreenKg) {
+      alert(`Yetersiz yeşil çekirdek.`);
+      return;
+    }
+
     const totalInputCost = (green.averageCost || 0) * deductedGreenKg;
     const calculatedRoastUnitCost = roast.stockKg > 0 ? totalInputCost / roast.stockKg : 0;
-    
-    setGreenCoffees(prev => prev.map(g => (g.id === greenId ? { ...g, stockKg: g.stockKg - deductedGreenKg } : g)));
-    setRoastStocks(prev => [...prev, { ...roast, unitCost: calculatedRoastUnitCost }]);
-    
+    const roastWithCost = { ...roast, unitCost: calculatedRoastUnitCost };
+
+    // 1. Update Local State
+    const updatedGreen = { ...green, stockKg: green.stockKg - deductedGreenKg };
+    setGreenCoffees((prev) => prev.map((g) => (g.id === greenId ? updatedGreen : g)));
+    setRoastStocks((prev) => [...prev, roastWithCost]);
+
     const greenMove: InventoryMovement = {
-        id: `MOV-ROAST-${Date.now()}`, date: new Date().toISOString(), itemType: 'GreenCoffee', itemId: greenId,
-        qtyDelta: -deductedGreenKg, uom: 'kg', reason: 'Usage', sourceType: 'Manual', sourceId: roast.id,
-        status: 'Active'
+      id: `MOV-ROAST-${Date.now()}`,
+      date: new Date().toISOString(),
+      itemType: 'GreenCoffee',
+      itemId: greenId,
+      qtyDelta: -deductedGreenKg,
+      uom: 'kg',
+      reason: 'Usage',
+      sourceType: 'Manual',
+      sourceId: roast.id,
+      status: 'Active',
     };
-    setInventoryMovements(prev => [...prev, greenMove]);
+    setInventoryMovements((prev) => [...prev, greenMove]);
+
+    // 2. Supabase Sync (Parallel)
+    sbUpdate('green_coffees', greenId, updatedGreen);
+    sbInsert('roast_stocks', roastWithCost);
+    sbInsert('inventory_movements', greenMove);
   };
-  
-  const updateRoastStock = (roast: RoastStock) => setRoastStocks(prev => prev.map(r => (r.id === roast.id ? roast : r)));
-  const deleteRoastStock = (id: string) => setRoastStocks(prev => prev.filter(r => r.id !== id));
-  const addRecipe = (recipe: BlendRecipe) => setRecipes(prev => [...prev, recipe]);
-  const updateRecipe = (recipe: BlendRecipe) => setRecipes(prev => prev.map(r => (r.id === recipe.id ? recipe : r)));
-  const deleteRecipe = (id: string) => setRecipes(prev => prev.filter(r => r.id !== id));
-  const addPackagingItem = (item: PackagingItem) => setPackagingItems(prev => [...prev, item]);
-  const updatePackagingItem = (item: PackagingItem) => setPackagingItems(prev => prev.map(p => (p.id === item.id ? item : p)));
-  const deletePackagingItem = (id: string) => setPackagingItems(prev => prev.filter(p => p.id !== id));
+
+  const updateRoastStock = (roast: RoastStock) => {
+    setRoastStocks((prev) => prev.map((r) => (r.id === roast.id ? roast : r)));
+    sbUpdate('roast_stocks', roast.id, roast);
+  };
+
+  const deleteRoastStock = (id: string) => {
+    setRoastStocks((prev) => prev.filter((r) => r.id !== id));
+    sbDelete('roast_stocks', id);
+  };
+
+  const addRecipe = (recipe: BlendRecipe) => {
+    setRecipes((prev) => [...prev, recipe]);
+    sbInsert('blend_recipes', recipe);
+  };
+
+  const updateRecipe = (recipe: BlendRecipe) => {
+    setRecipes((prev) => prev.map((r) => (r.id === recipe.id ? recipe : r)));
+    sbUpdate('blend_recipes', recipe.id, recipe);
+  };
+
+  const deleteRecipe = (id: string) => {
+    setRecipes((prev) => prev.filter((r) => r.id !== id));
+    sbDelete('blend_recipes', id);
+  };
+
+  const addPackagingItem = (item: PackagingItem) => {
+    setPackagingItems((prev) => [...prev, item]);
+    sbInsert('packaging_items', item);
+  };
+
+  const updatePackagingItem = (item: PackagingItem) => {
+    setPackagingItems((prev) => prev.map((p) => (p.id === item.id ? item : p)));
+    sbUpdate('packaging_items', item.id, item);
+  };
+
+  const deletePackagingItem = (id: string) => {
+    setPackagingItems((prev) => prev.filter((p) => p.id !== id));
+    sbDelete('packaging_items', id);
+  };
 
   const getOnHand = (itemType: string, itemId: string) => {
-      return inventoryMovements
-        .filter(m => m.itemType === itemType && m.itemId === itemId && m.status === 'Active')
-        .reduce((sum, m) => sum + m.qtyDelta, 0);
+    return inventoryMovements
+      .filter((m) => m.itemType === itemType && m.itemId === itemId && m.status === 'Active')
+      .reduce((sum, m) => sum + m.qtyDelta, 0);
   };
 
+  // Helper for voiding movements
   const voidInventoryMovementsBySource = (sourceType: string, sourceId: string) => {
-      const relatedMovements = inventoryMovements.filter(m => m.sourceType === sourceType && m.sourceId === sourceId && m.status === 'Active');
-      if (relatedMovements.length === 0) return;
+    const relatedMovements = inventoryMovements.filter(
+      (m) => m.sourceType === sourceType && m.sourceId === sourceId && m.status === 'Active'
+    );
+    if (relatedMovements.length === 0) return;
 
-      const correctionMovements: InventoryMovement[] = relatedMovements.map(m => ({
-          id: `MOV-VOID-${m.id}-${Date.now()}`,
-          date: new Date().toISOString(),
-          itemType: m.itemType,
-          itemId: m.itemId,
-          qtyDelta: -m.qtyDelta,
-          uom: m.uom,
-          reason: 'Void',
-          sourceType: m.sourceType,
-          sourceId: m.sourceId,
-          status: 'Active',
-          unitCost: m.unitCost,
-          totalCost: m.totalCost ? -m.totalCost : undefined
-      }));
-      
-      setInventoryMovements(prev => [...prev, ...correctionMovements]);
+    const correctionMovements: InventoryMovement[] = relatedMovements.map((m) => ({
+      id: `MOV-VOID-${m.id}-${Date.now()}`,
+      date: new Date().toISOString(),
+      itemType: m.itemType,
+      itemId: m.itemId,
+      qtyDelta: -m.qtyDelta,
+      uom: m.uom,
+      reason: 'Void',
+      sourceType: m.sourceType,
+      sourceId: m.sourceId,
+      status: 'Active',
+      unitCost: m.unitCost,
+      totalCost: m.totalCost ? -m.totalCost : undefined,
+    }));
+
+    setInventoryMovements((prev) => [...prev, ...correctionMovements]);
+    // Bulk insert for corrections
+    if(isSupabaseReadyRef.current) supabase.from('inventory_movements').insert(correctionMovements).then();
   };
 
+  // Helper for voiding ledger
   const voidLedgerEntriesBySource = (sourceType: string, sourceId: string) => {
-      const relatedEntries = ledgerEntries.filter(l => l.sourceType === sourceType && l.sourceId === sourceId && l.status === 'Active');
-      if (relatedEntries.length === 0) return;
+    const relatedEntries = ledgerEntries.filter(
+      (l) => l.sourceType === sourceType && l.sourceId === sourceId && l.status === 'Active'
+    );
+    if (relatedEntries.length === 0) return;
 
-      const correctionEntries: LedgerEntry[] = relatedEntries.map(l => ({
-          id: `LED-VOID-${l.id}-${Date.now()}`,
-          date: new Date().toISOString(),
-          partyId: l.partyId,
-          categoryId: l.categoryId,
-          direction: l.direction === 'Debit' ? 'Credit' : 'Debit',
-          amount: l.amount,
-          currency: l.currency,
-          sourceType: l.sourceType,
-          sourceId: l.sourceId,
-          status: 'Active',
-          note: `İPTAL KAYDI: ${l.note || ''}`
-      }));
+    const correctionEntries: LedgerEntry[] = relatedEntries.map((l) => ({
+      id: `LED-VOID-${l.id}-${Date.now()}`,
+      date: new Date().toISOString(),
+      partyId: l.partyId,
+      categoryId: l.categoryId,
+      direction: l.direction === 'Debit' ? 'Credit' : 'Debit',
+      amount: l.amount,
+      currency: l.currency,
+      sourceType: l.sourceType,
+      sourceId: l.sourceId,
+      status: 'Active',
+      note: `İPTAL KAYDI: ${l.note || ''}`,
+    }));
 
-      setLedgerEntries(prev => [...prev, ...correctionEntries]);
+    setLedgerEntries((prev) => [...prev, ...correctionEntries]);
+    if(isSupabaseReadyRef.current) supabase.from('ledger_entries').insert(correctionEntries).then();
   };
 
   // --- TRANSACTIONS ---
 
-  // 1. SATIN ALMA (MALİYET HESAPLAMALI)
   const recordPurchase = (log: PurchaseLog) => {
     const logId = log.id || `PUR-${Date.now()}`;
     const date = log.date;
-    const currentTransactionUnitCost = log.cost && log.quantity > 0 ? log.cost / log.quantity : 0;
-    
-    const newLogWithUnitCost = { ...log, id: logId, unitCost: currentTransactionUnitCost, status: 'Active' as const };
-    setPurchases(prev => [newLogWithUnitCost, ...prev]);
+    const currentTransactionUnitCost =
+      log.cost && log.quantity > 0 ? (log.cost as number) / log.quantity : 0;
 
-    // Finansal Kayıt
+    const newLogWithUnitCost: PurchaseLog = {
+      ...log,
+      id: logId,
+      unitCost: currentTransactionUnitCost,
+      status: 'Active',
+    };
+    
+    // Updates
+    setPurchases((prev) => [newLogWithUnitCost, ...prev]);
+    sbInsert('purchases', newLogWithUnitCost);
+
     if (log.cost && log.cost > 0) {
-      setLedgerEntries(prev => [...prev, {
-        id: `LED-${Date.now()}`, date, partyId: log.supplierId, 
+      const entry: LedgerEntry = {
+        id: `LED-${Date.now()}`,
+        date,
+        partyId: log.supplierId,
         categoryId: log.categoryId || (log.category === 'GreenCoffee' ? 'CAT-001' : 'CAT-002'),
-        direction: 'Debit', amount: log.cost || 0, currency: 'TRY', sourceType: 'Purchase', sourceId: logId, status: 'Active',
-        note: `Satın Alım: ${log.itemName}`
-      }]);
+        direction: 'Debit',
+        amount: log.cost || 0,
+        currency: 'TRY',
+        sourceType: 'Purchase',
+        sourceId: logId,
+        status: 'Active',
+        note: `Satın Alım: ${log.itemName}`,
+      };
+      setLedgerEntries((prev) => [...prev, entry]);
+      sbInsert('ledger_entries', entry);
     }
 
-    // Stok Hareketi Kaydı
-    setInventoryMovements(prev => [...prev, {
-        id: `MOV-PUR-${logId}`, date, itemType: log.category === 'GreenCoffee' ? 'GreenCoffee' : 'Packaging', itemId: log.itemId,
-        qtyDelta: log.quantity, uom: log.category === 'GreenCoffee' ? 'kg' : 'qty', reason: 'Purchase', sourceType: 'PurchaseLog', sourceId: logId,
-        unitCost: currentTransactionUnitCost, totalCost: log.cost, status: 'Active'
-    }]);
+    const move: InventoryMovement = {
+      id: `MOV-PUR-${logId}`,
+      date,
+      itemType: log.category === 'GreenCoffee' ? 'GreenCoffee' : 'Packaging',
+      itemId: log.itemId,
+      qtyDelta: log.quantity,
+      uom: log.category === 'GreenCoffee' ? 'kg' : 'qty',
+      reason: 'Purchase',
+      sourceType: 'PurchaseLog',
+      sourceId: logId,
+      unitCost: currentTransactionUnitCost,
+      totalCost: log.cost,
+      status: 'Active',
+    };
+    setInventoryMovements((prev) => [...prev, move]);
+    sbInsert('inventory_movements', move);
 
-    // --- KRİTİK GÜNCELLEME: AĞIRLIKLI ORTALAMA MALİYET HESABI ---
+    // Stock Updates
     if (log.category === 'GreenCoffee') {
-      setGreenCoffees(prev => prev.map(g => {
-        if (g.id === log.itemId) {
-            const currentStock = g.stockKg || 0;
-            const currentAvgCost = g.averageCost || 0;
-            
-            const currentTotalValue = currentStock * currentAvgCost;
-            const newPurchaseValue = log.cost || 0;
-            
-            const newTotalStock = currentStock + log.quantity;
-            let newAvgCost = 0;
-            
-            // Eğer yeni stok 0'dan büyükse ortalama al, yoksa 0 (bölme hatasını önle)
-            if (newTotalStock > 0) {
-                newAvgCost = (currentTotalValue + newPurchaseValue) / newTotalStock;
-            }
-
-            return { 
-                ...g, 
-                stockKg: newTotalStock,
-                averageCost: newAvgCost
-            };
+      const target = greenCoffees.find(g => g.id === log.itemId);
+      if(target) {
+        const currentStock = target.stockKg || 0;
+        const currentAvgCost = target.averageCost || 0;
+        const currentTotalValue = currentStock * currentAvgCost;
+        const newPurchaseValue = log.cost || 0;
+        const newTotalStock = currentStock + log.quantity;
+        let newAvgCost = 0;
+        if (newTotalStock > 0) {
+           newAvgCost = (currentTotalValue + newPurchaseValue) / newTotalStock;
         }
-        return g;
-      }));
+        const updatedTarget = { ...target, stockKg: newTotalStock, averageCost: newAvgCost };
+        setGreenCoffees((prev) => prev.map((g) => (g.id === log.itemId ? updatedTarget : g)));
+        sbUpdate('green_coffees', target.id, updatedTarget);
+      }
     } else {
-      // Aynı işlemi Packaging için de yapıyoruz
-      setPackagingItems(prev => prev.map(p => {
-        if (p.id === log.itemId) {
-            const currentStock = p.stockQuantity || 0;
-            const currentAvgCost = p.averageCost || 0;
-
-            const currentTotalValue = currentStock * currentAvgCost;
-            const newPurchaseValue = log.cost || 0;
-
-            const newTotalStock = currentStock + log.quantity;
-            let newAvgCost = 0;
-
-            if (newTotalStock > 0) {
-                newAvgCost = (currentTotalValue + newPurchaseValue) / newTotalStock;
-            }
-
-            return { 
-                ...p, 
-                stockQuantity: newTotalStock,
-                averageCost: newAvgCost
-            };
+      const target = packagingItems.find(p => p.id === log.itemId);
+      if(target) {
+        const currentStock = target.stockQuantity || 0;
+        const currentAvgCost = target.averageCost || 0;
+        const currentTotalValue = currentStock * currentAvgCost;
+        const newPurchaseValue = log.cost || 0;
+        const newTotalStock = currentStock + log.quantity;
+        let newAvgCost = 0;
+        if (newTotalStock > 0) {
+          newAvgCost = (currentTotalValue + newPurchaseValue) / newTotalStock;
         }
-        return p;
-      }));
+        const updatedTarget = { ...target, stockQuantity: newTotalStock, averageCost: newAvgCost };
+        setPackagingItems((prev) => prev.map((p) => (p.id === log.itemId ? updatedTarget : p)));
+        sbUpdate('packaging_items', target.id, updatedTarget);
+      }
     }
   };
 
   const voidPurchase = (id: string, reason?: string) => {
-      setPurchases(prev => prev.map(p => p.id === id ? { ...p, status: 'Voided', voidReason: reason } : p));
-      voidInventoryMovementsBySource('PurchaseLog', id);
-      voidLedgerEntriesBySource('PurchaseLog', id);
-      // Not: İptal durumunda ortalama maliyeti geriye döndürmek matematiksel olarak çok karmaşıktır (hangi andaki maliyeti düşeceğiz?).
-      // Basit sistemlerde genellikle stok düşülür ama maliyet "o anki ortalama" üzerinden devam eder veya manuel düzeltme gerekir.
-      // Burada sadece miktar iadesi yapılıyor (movement void ile), maliyet averageCost olarak kalıyor.
+    const updated = { status: 'Voided' as const, voidReason: reason };
+    setPurchases((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...updated } : p))
+    );
+    sbUpdate('purchases', id, updated);
+    voidInventoryMovementsBySource('PurchaseLog', id);
+    voidLedgerEntriesBySource('PurchaseLog', id);
   };
 
-  // 2. ÜRETİM
-  const recordProduction = (logData: Omit<ProductionLog, 'id' | 'status'>, packagingUsage: PackagingUsage, recipe?: BlendRecipe, singleOriginId?: string) => {
+  const recordProduction = (
+    logData: Omit<ProductionLog, 'id' | 'status'>,
+    packagingUsage: PackagingUsage,
+    recipe?: BlendRecipe,
+    singleOriginId?: string
+  ) => {
     const newLogId = `PRD-${Date.now()}`;
     const date = logData.date;
     const movements: InventoryMovement[] = [];
 
     let totalCoffeeCost = 0;
-    
+
+    // Coffee Deduction Logic
     if (recipe) {
-      recipe.ingredients.forEach(ing => {
-        const roast = roastStocks.find(r => r.id === ing.roastId);
+      recipe.ingredients.forEach((ing) => {
+        const roast = roastStocks.find((r) => r.id === ing.roastId);
         const amountUsed = logData.totalCoffeeKg * (ing.ratio / 100);
         const cost = (roast?.unitCost || 0) * amountUsed;
         totalCoffeeCost += cost;
         movements.push({
-            id: `MOV-PRD-RST-${ing.roastId}-${Date.now()}`, date, itemType: 'RoastStock', itemId: ing.roastId,
-            qtyDelta: -amountUsed, uom: 'kg', reason: 'Usage', sourceType: 'ProductionLog', sourceId: newLogId, unitCost: roast?.unitCost, totalCost: cost, status: 'Active'
+          id: `MOV-PRD-RST-${ing.roastId}-${Date.now()}`,
+          date,
+          itemType: 'RoastStock',
+          itemId: ing.roastId,
+          qtyDelta: -amountUsed,
+          uom: 'kg',
+          reason: 'Usage',
+          sourceType: 'ProductionLog',
+          sourceId: newLogId,
+          unitCost: roast?.unitCost,
+          totalCost: cost,
+          status: 'Active',
         });
       });
-      setRoastStocks(prev => {
-         const next = [...prev];
-         recipe.ingredients.forEach(ing => {
-             const idx = next.findIndex(r => r.id === ing.roastId);
-             if(idx !== -1) next[idx] = { ...next[idx], stockKg: next[idx].stockKg - (logData.totalCoffeeKg * (ing.ratio / 100)) };
-         });
-         return next;
+      
+      // Update Roast Stocks Locally & Remotely
+      setRoastStocks((prev) => {
+        const next = [...prev];
+        recipe.ingredients.forEach((ing) => {
+          const idx = next.findIndex((r) => r.id === ing.roastId);
+          if (idx !== -1) {
+            const newStock = next[idx].stockKg - logData.totalCoffeeKg * (ing.ratio / 100);
+            next[idx] = { ...next[idx], stockKg: newStock };
+            sbUpdate('roast_stocks', next[idx].id, { stockKg: newStock });
+          }
+        });
+        return next;
       });
     } else if (singleOriginId) {
-      const roast = roastStocks.find(r => r.id === singleOriginId);
+      const roast = roastStocks.find((r) => r.id === singleOriginId);
       const amountUsed = logData.totalCoffeeKg;
       const cost = (roast?.unitCost || 0) * amountUsed;
       totalCoffeeCost += cost;
       movements.push({
-          id: `MOV-PRD-RST-${singleOriginId}-${Date.now()}`, date, itemType: 'RoastStock', itemId: singleOriginId,
-          qtyDelta: -amountUsed, uom: 'kg', reason: 'Usage', sourceType: 'ProductionLog', sourceId: newLogId, unitCost: roast?.unitCost, totalCost: cost, status: 'Active'
+        id: `MOV-PRD-RST-${singleOriginId}-${Date.now()}`,
+        date,
+        itemType: 'RoastStock',
+        itemId: singleOriginId,
+        qtyDelta: -amountUsed,
+        uom: 'kg',
+        reason: 'Usage',
+        sourceType: 'ProductionLog',
+        sourceId: newLogId,
+        unitCost: roast?.unitCost,
+        totalCost: cost,
+        status: 'Active',
       });
-      setRoastStocks(prev => prev.map(r => r.id === singleOriginId ? { ...r, stockKg: r.stockKg - amountUsed } : r));
+      // Single Update
+      if(roast) {
+        const newStock = roast.stockKg - amountUsed;
+        setRoastStocks(prev => prev.map(r => r.id === singleOriginId ? { ...r, stockKg: newStock} : r));
+        sbUpdate('roast_stocks', singleOriginId, { stockKg: newStock });
+      }
     }
 
+    // Packaging Deduction Logic
     let totalPackagingCost = 0;
     const processPackItem = (id: string | undefined, qty: number) => {
-        if (!id || qty <= 0) return;
-        const item = packagingItems.find(p => p.id === id);
-        const cost = (item?.averageCost || 0) * qty;
-        totalPackagingCost += cost;
-        movements.push({
-            id: `MOV-PRD-PKG-${id}-${Date.now()}`, date, itemType: 'Packaging', itemId: id,
-            qtyDelta: -qty, uom: 'qty', reason: 'Usage', sourceType: 'ProductionLog', sourceId: newLogId, unitCost: item?.averageCost, totalCost: cost, status: 'Active'
-        });
-        setPackagingItems(prev => prev.map(p => p.id === id ? { ...p, stockQuantity: p.stockQuantity - qty } : p));
+      if (!id || qty <= 0) return;
+      const item = packagingItems.find((p) => p.id === id);
+      const cost = (item?.averageCost || 0) * qty;
+      totalPackagingCost += cost;
+      movements.push({
+        id: `MOV-PRD-PKG-${id}-${Date.now()}`,
+        date,
+        itemType: 'Packaging',
+        itemId: id,
+        qtyDelta: -qty,
+        uom: 'qty',
+        reason: 'Usage',
+        sourceType: 'ProductionLog',
+        sourceId: newLogId,
+        unitCost: item?.averageCost,
+        totalCost: cost,
+        status: 'Active',
+      });
+      
+      if(item) {
+        const newStock = item.stockQuantity - qty;
+        setPackagingItems(prev => prev.map(p => p.id === id ? { ...p, stockQuantity: newStock } : p));
+        sbUpdate('packaging_items', id, { stockQuantity: newStock });
+      }
     };
+
     processPackItem(packagingUsage.bagId, logData.packCount);
     processPackItem(packagingUsage.frontLabelId, logData.packCount);
     processPackItem(packagingUsage.backLabelId, logData.packCount);
@@ -479,171 +990,302 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     const unitCost = logData.packCount > 0 ? grandTotalCost / logData.packCount : 0;
 
     movements.push({
-        id: `MOV-PRD-FIN-${newLogId}`, date, itemType: 'FinishedProduct', itemId: `${logData.brand}-${logData.productName}-${logData.packSize}`,
-        qtyDelta: logData.packCount, uom: 'qty', reason: 'Production', sourceType: 'ProductionLog', sourceId: newLogId,
-        unitCost: unitCost, totalCost: grandTotalCost, status: 'Active'
+      id: `MOV-PRD-FIN-${newLogId}`,
+      date,
+      itemType: 'FinishedProduct',
+      itemId: `${logData.brand}-${logData.productName}-${logData.packSize}`,
+      qtyDelta: logData.packCount,
+      uom: 'qty',
+      reason: 'Production',
+      sourceType: 'ProductionLog',
+      sourceId: newLogId,
+      unitCost,
+      totalCost: grandTotalCost,
+      status: 'Active',
     });
 
-    setInventoryMovements(prev => [...prev, ...movements]);
-    setProductionLogs(prev => [{ ...logData, id: newLogId, status: 'Active', unitCost, totalCost: grandTotalCost }, ...prev]);
+    setInventoryMovements((prev) => [...prev, ...movements]);
+    // Bulk insert movements
+    if(isSupabaseReadyRef.current) supabase.from('inventory_movements').insert(movements).then();
+
+    const newLog = { ...logData, id: newLogId, status: 'Active' as const, unitCost, totalCost: grandTotalCost };
+    setProductionLogs((prev) => [newLog, ...prev]);
+    sbInsert('production_logs', newLog);
   };
 
   const voidProductionLog = (id: string, reason?: string) => {
-    setProductionLogs(prev => prev.map(l => l.id === id ? { ...l, status: 'Voided', voidReason: reason || 'İptal', voidDate: new Date().toISOString() } : l));
+    const updated = { status: 'Voided' as const, voidReason: reason || 'İptal', voidDate: new Date().toISOString() };
+    setProductionLogs((prev) =>
+      prev.map((l) =>
+        l.id === id
+          ? { ...l, ...updated }
+          : l
+      )
+    );
+    sbUpdate('production_logs', id, updated);
     voidInventoryMovementsBySource('ProductionLog', id);
   };
 
-  // 3. SEVKİYAT VE SATIŞ
-  const shipOrder = (orderId: string, date: string) => { 
-    const order = orders.find(o => o.id === orderId);
+  const shipOrder = (orderId: string, date: string) => {
+    const order = orders.find((o) => o.id === orderId);
     if (!order) return;
-    
+
     const newSaleId = `SALE-${Date.now()}`;
     const newSale: Sale = {
-        id: newSaleId,
-        orderId: order.id,
-        customerId: order.customerId,
-        customerName: order.customerName,
-        date: date,
-        items: [...order.items],
-        totalAmount: order.totalAmount || 0,
-        status: 'Active'
+      id: newSaleId,
+      orderId: order.id,
+      customerId: order.customerId,
+      customerName: order.customerName,
+      date,
+      items: [...order.items],
+      totalAmount: order.totalAmount || 0,
+      status: 'Active',
     };
-    setSales(prev => [newSale, ...prev]);
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Shipped', shipDate: date, linkedSaleId: newSaleId } : o));
+
+    setSales((prev) => [newSale, ...prev]);
+    sbInsert('sales', newSale);
+
+    const updatedOrder = { status: 'Shipped' as const, shipDate: date, linkedSaleId: newSaleId };
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId ? { ...o, ...updatedOrder } : o
+      )
+    );
+    sbUpdate('orders', orderId, updatedOrder);
 
     let totalCOGS = 0;
     const movements: InventoryMovement[] = [];
 
     order.items.forEach((item, idx) => {
-        const itemId = `${item.brand}-${item.productName}-${item.packSize}`;
-        
-        const productionMoves = inventoryMovements.filter(m => 
-            m.itemType === 'FinishedProduct' && 
-            m.itemId === itemId && 
-            m.reason === 'Production' && 
-            m.status === 'Active'
-        );
-        const totalProducedCost = productionMoves.reduce((s, m) => s + (m.totalCost || 0), 0);
-        const totalProducedQty = productionMoves.reduce((s, m) => s + m.qtyDelta, 0);
-        const avgUnitCost = totalProducedQty > 0 ? totalProducedCost / totalProducedQty : 0;
+      const itemId = `${item.brand}-${item.productName}-${item.packSize}`;
 
-        const lineCost = avgUnitCost * item.quantity;
-        totalCOGS += lineCost;
+      const productionMoves = inventoryMovements.filter(
+        (m) =>
+          m.itemType === 'FinishedProduct' &&
+          m.itemId === itemId &&
+          m.reason === 'Production' &&
+          m.status === 'Active'
+      );
+      const totalProducedCost = productionMoves.reduce((s, m) => s + (m.totalCost || 0), 0);
+      const totalProducedQty = productionMoves.reduce((s, m) => s + m.qtyDelta, 0);
+      const avgUnitCost = totalProducedQty > 0 ? totalProducedCost / totalProducedQty : 0;
 
-        movements.push({
-            id: `MOV-SALE-${newSaleId}-${idx}`, date, itemType: 'FinishedProduct', itemId: itemId,
-            qtyDelta: -item.quantity, uom: 'qty', reason: 'Sale', sourceType: 'Sale', sourceId: newSaleId, status: 'Active',
-            unitCost: avgUnitCost, totalCost: lineCost
-        });
+      const lineCost = avgUnitCost * item.quantity;
+      totalCOGS += lineCost;
+
+      movements.push({
+        id: `MOV-SALE-${newSaleId}-${idx}`,
+        date,
+        itemType: 'FinishedProduct',
+        itemId,
+        qtyDelta: -item.quantity,
+        uom: 'qty',
+        reason: 'Sale',
+        sourceType: 'Sale',
+        sourceId: newSaleId,
+        status: 'Active',
+        unitCost: avgUnitCost,
+        totalCost: lineCost,
+      });
     });
-    
-    setInventoryMovements(prev => [...prev, ...movements]);
+
+    setInventoryMovements((prev) => [...prev, ...movements]);
+    if(isSupabaseReadyRef.current) supabase.from('inventory_movements').insert(movements).then();
 
     const newLedgerEntries: LedgerEntry[] = [];
     if (order.totalAmount && order.totalAmount > 0) {
       newLedgerEntries.push({
-        id: `LED-SALE-${Date.now()}`, date, partyId: order.customerId, categoryId: 'CAT-003', direction: 'Credit', amount: order.totalAmount || 0,
-        currency: 'TRY', sourceType: 'Sale', sourceId: newSaleId, status: 'Active', note: `Satış Geliri: #${newSaleId}`
+        id: `LED-SALE-${Date.now()}`,
+        date,
+        partyId: order.customerId,
+        categoryId: 'CAT-003',
+        direction: 'Credit',
+        amount: order.totalAmount || 0,
+        currency: 'TRY',
+        sourceType: 'Sale',
+        sourceId: newSaleId,
+        status: 'Active',
+        note: `Satış Geliri: #${newSaleId}`,
       });
     }
 
     if (totalCOGS > 0) {
-        newLedgerEntries.push({
-            id: `LED-COGS-${Date.now()}`, date, partyId: undefined, categoryId: 'CAT-COGS', direction: 'Debit', amount: totalCOGS,
-            currency: 'TRY', sourceType: 'Sale', sourceId: newSaleId, status: 'Active', note: `COGS (Maliyet): #${newSaleId}`
-        });
+      newLedgerEntries.push({
+        id: `LED-COGS-${Date.now()}`,
+        date,
+        partyId: undefined,
+        categoryId: 'CAT-COGS',
+        direction: 'Debit',
+        amount: totalCOGS,
+        currency: 'TRY',
+        sourceType: 'Sale',
+        sourceId: newSaleId,
+        status: 'Active',
+        note: `COGS (Maliyet): #${newSaleId}`,
+      });
     }
 
-    setLedgerEntries(prev => [...prev, ...newLedgerEntries]);
+    setLedgerEntries((prev) => [...prev, ...newLedgerEntries]);
+    if(isSupabaseReadyRef.current) supabase.from('ledger_entries').insert(newLedgerEntries).then();
   };
 
   const voidSale = (saleId: string, reason?: string) => {
-      setSales(prev => prev.map(s => s.id === saleId ? { ...s, status: 'Voided', voidReason: reason, voidDate: new Date().toISOString() } : s));
-      voidInventoryMovementsBySource('Sale', saleId);
-      voidLedgerEntriesBySource('Sale', saleId);
+    const updated = { status: 'Voided' as const, voidReason: reason, voidDate: new Date().toISOString() };
+    setSales((prev) =>
+      prev.map((s) =>
+        s.id === saleId ? { ...s, ...updated } : s
+      )
+    );
+    sbUpdate('sales', saleId, updated);
+    voidInventoryMovementsBySource('Sale', saleId);
+    voidLedgerEntriesBySource('Sale', saleId);
   };
 
-  const addOrder = (order: Order) => setOrders(prev => [order, ...prev]);
+  const addOrder = (order: Order) => {
+    setOrders((prev) => [order, ...prev]);
+    sbInsert('orders', order);
+  };
+
   const cancelOrder = (orderId: string, reason?: string) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Voided', voidReason: reason, voidDate: new Date().toISOString() } : o));
+    const updated = { status: 'Voided' as const, voidReason: reason, voidDate: new Date().toISOString() };
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId ? { ...o, ...updated } : o
+      )
+    );
+    sbUpdate('orders', orderId, updated);
   };
 
-  // 4. ÖDEMELER
   const recordPayment = (payment: Payment) => {
-    setPayments(prev => [payment, ...prev]);
-    setLedgerEntries(prev => [...prev, {
-      id: `LED-${Date.now()}`, date: payment.date, partyId: payment.partyId, categoryId: 'CAT-006',
-      direction: payment.type === 'Inbound' ? 'Credit' : 'Debit', amount: payment.amount, currency: 'TRY',
-      sourceType: 'Payment', sourceId: payment.id, status: 'Active', note: `${payment.type === 'Inbound' ? 'Tahsilat' : 'Ödeme'} (${payment.method})`
-    }]);
+    setPayments((prev) => [payment, ...prev]);
+    sbInsert('payments', payment);
+    
+    const entry: LedgerEntry = {
+      id: `LED-${Date.now()}`,
+      date: payment.date,
+      partyId: payment.partyId,
+      categoryId: 'CAT-006',
+      direction: payment.type === 'Inbound' ? 'Credit' : 'Debit',
+      amount: payment.amount,
+      currency: 'TRY',
+      sourceType: 'Payment',
+      sourceId: payment.id,
+      status: 'Active',
+      note: `${payment.type === 'Inbound' ? 'Tahsilat' : 'Ödeme'} (${payment.method})`,
+    };
+    setLedgerEntries((prev) => [...prev, entry]);
+    sbInsert('ledger_entries', entry);
   };
 
   const voidPayment = (id: string, reason?: string) => {
-    setPayments(prev => prev.map(p => p.id === id ? { ...p, status: 'Voided', note: reason ? `${p.note || ''} [İptal: ${reason}]` : p.note, voidReason: reason } : p));
-    voidLedgerEntriesBySource('Payment', id);
-  };
-
-  // --- OTHERS ---
-  const addQuote = (quote: Quote) => setQuotes(prev => [quote, ...prev]);
-  const deleteQuote = (id: string) => setQuotes(prev => prev.filter(q => q.id !== id));
-  const addParty = (party: Party) => setParties(prev => [...prev, party]);
-  const updateParty = (party: Party) => setParties(prev => prev.map(p => p.id === party.id ? party : p));
-  const voidParty = (id: string) => setParties(prev => prev.map(p => p.id === id ? { ...p, status: 'Voided' } : p));
-  const addCategory = (category: Category) => setCategories(prev => [...prev, category]);
-  const voidCategory = (id: string) => setCategories(prev => prev.map(c => c.id === id ? { ...c, status: 'Voided' } : c));
-
-  const getPartyBalance = (partyId: string) => {
-    const purchases = ledgerEntries
-      .filter(l => l.partyId === partyId && l.sourceType === 'Purchase' && l.status === 'Active')
-      .reduce((sum, l) => sum + (l.direction === 'Debit' ? l.amount : -l.amount), 0);
-
-    const sales = ledgerEntries
-      .filter(l => l.partyId === partyId && l.sourceType === 'Sale' && l.status === 'Active')
-      .reduce((sum, l) => sum + (l.direction === 'Credit' ? l.amount : -l.amount), 0);
-
-    const netPaymentFlow = ledgerEntries
-      .filter(l => l.partyId === partyId && l.sourceType === 'Payment' && l.status === 'Active')
-      .reduce((sum, l) => sum + (l.direction === 'Credit' ? l.amount : -l.amount), 0);
-
-    const party = parties.find(p => p.id === partyId);
-    
-    if (party?.type === 'Supplier') {
-        return purchases + netPaymentFlow;
-    } else if (party?.type === 'Customer') {
-        return sales - netPaymentFlow;
-    } else {
-        return (sales - purchases) - netPaymentFlow;
+    const target = payments.find(p => p.id === id);
+    if(target) {
+        const updated = {
+            status: 'Voided' as const,
+            note: reason ? `${target.note || ''} [İptal: ${reason}]` : target.note,
+            voidReason: reason,
+        };
+        setPayments((prev) => prev.map((p) => p.id === id ? { ...p, ...updated } : p));
+        sbUpdate('payments', id, updated);
+        voidLedgerEntriesBySource('Payment', id);
     }
   };
 
-  // --- DATA MANAGEMENT ---
-  
-  const importSystemData = (data: any) => {
-      try {
-          if(data.greenCoffees) setGreenCoffees(data.greenCoffees);
-          if(data.roastStocks) setRoastStocks(data.roastStocks);
-          if(data.recipes) setRecipes(data.recipes);
-          if(data.packagingItems) setPackagingItems(data.packagingItems);
-          if(data.productionLogs) setProductionLogs(data.productionLogs);
-          if(data.orders) setOrders(data.orders);
-          if(data.sales) setSales(data.sales);
-          if(data.quotes) setQuotes(data.quotes);
-          if(data.purchases) setPurchases(data.purchases);
-          if(data.settings) setSettings(data.settings);
-          if(data.parties) setParties(data.parties);
-          if(data.categories) setCategories(data.categories);
-          if(data.ledgerEntries) setLedgerEntries(data.ledgerEntries);
-          if(data.payments) setPayments(data.payments);
-          if(data.inventoryMovements) setInventoryMovements(data.inventoryMovements);
-          alert('Sistem verileri başarıyla yüklendi.');
-      } catch (error) {
-          alert('Veri yükleme hatası: Dosya bozuk veya uyumsuz.');
-          console.error(error);
-      }
+  const addQuote = (quote: Quote) => {
+    setQuotes((prev) => [quote, ...prev]);
+    sbInsert('quotes', quote);
   };
 
-const resetSystem = () => {
+  const deleteQuote = (id: string) => {
+    setQuotes((prev) => prev.filter((q) => q.id !== id));
+    sbDelete('quotes', id);
+  };
+
+  const addParty = (party: Party) => {
+    setParties((prev) => [...prev, party]);
+    sbInsert('parties', party);
+  };
+
+  const updateParty = (party: Party) => {
+    setParties((prev) => prev.map((p) => (p.id === party.id ? party : p)));
+    sbUpdate('parties', party.id, party);
+  };
+
+  const voidParty = (id: string) => {
+    const updated = { status: 'Voided' as const };
+    setParties((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
+    sbUpdate('parties', id, updated);
+  };
+
+  const addCategory = (category: Category) => {
+    setCategories((prev) => [...prev, category]);
+    sbInsert('categories', category);
+  };
+
+  const voidCategory = (id: string) => {
+    const updated = { status: 'Voided' as const };
+    setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...updated } : c)));
+    sbUpdate('categories', id, updated);
+  };
+
+  const importSystemData = async (data: any) => {
+    try {
+        // 1. First wipe everything
+        await resetSystem();
+
+        // 2. Set Local State
+        if (data.greenCoffees) setGreenCoffees(data.greenCoffees);
+        if (data.roastStocks) setRoastStocks(data.roastStocks);
+        if (data.recipes) setRecipes(data.recipes);
+        if (data.packagingItems) setPackagingItems(data.packagingItems);
+        if (data.productionLogs) setProductionLogs(data.productionLogs);
+        if (data.orders) setOrders(data.orders);
+        if (data.sales) setSales(data.sales);
+        if (data.quotes) setQuotes(data.quotes);
+        if (data.purchases) setPurchases(data.purchases);
+        if (data.settings) setSettings(data.settings);
+        if (data.parties) setParties(data.parties);
+        if (data.categories) setCategories(data.categories);
+        if (data.ledgerEntries) setLedgerEntries(data.ledgerEntries);
+        if (data.payments) setPayments(data.payments);
+        if (data.inventoryMovements) setInventoryMovements(data.inventoryMovements);
+
+        // 3. Bulk Insert into Supabase
+        if(isSupabaseReadyRef.current) {
+            // Level 1: Master
+            if(data.parties?.length) await supabase.from('parties').insert(data.parties);
+            if(data.categories?.length) await supabase.from('categories').insert(data.categories);
+            if(data.settings) await supabase.from('system_settings').upsert({ id: 'default', value: data.settings });
+
+            // Level 2: Items
+            if(data.greenCoffees?.length) await supabase.from('green_coffees').insert(data.greenCoffees);
+            if(data.roastStocks?.length) await supabase.from('roast_stocks').insert(data.roastStocks);
+            if(data.packagingItems?.length) await supabase.from('packaging_items').insert(data.packagingItems);
+
+            // Level 3: Recipes & Orders
+            if(data.recipes?.length) await supabase.from('blend_recipes').insert(data.recipes);
+            if(data.orders?.length) await supabase.from('orders').insert(data.orders);
+
+            // Level 4: Transactions
+            if(data.purchases?.length) await supabase.from('purchases').insert(data.purchases);
+            if(data.productionLogs?.length) await supabase.from('production_logs').insert(data.productionLogs);
+            if(data.sales?.length) await supabase.from('sales').insert(data.sales);
+            if(data.quotes?.length) await supabase.from('quotes').insert(data.quotes);
+            if(data.payments?.length) await supabase.from('payments').insert(data.payments);
+
+            // Level 5: Details
+            if(data.inventoryMovements?.length) await supabase.from('inventory_movements').insert(data.inventoryMovements);
+            if(data.ledgerEntries?.length) await supabase.from('ledger_entries').insert(data.ledgerEntries);
+        }
+
+    } catch (error) {
+        console.error("Import Error:", error);
+        throw new Error('Veri yükleme sırasında veritabanı hatası oluştu.');
+    }
+  };
+
+  const resetSystem = async () => {
+    // 1. Clear Local State
     setGreenCoffees([]);
     setRoastStocks([]);
     setRecipes([]);
@@ -658,48 +1300,90 @@ const resetSystem = () => {
     setLedgerEntries([]);
     setPayments([]);
     setInventoryMovements([]);
-    
+    setSettings(DEFAULT_SETTINGS);
+
     if (typeof window !== 'undefined') {
-        localStorage.removeItem('greenCoffees');
-        localStorage.removeItem('roastStocks');
-        localStorage.removeItem('recipes');
-        localStorage.removeItem('packagingItems');
-        localStorage.removeItem('productionLogs');
-        localStorage.removeItem('orders');
-        localStorage.removeItem('sales');
-        localStorage.removeItem('quotes');
-        localStorage.removeItem('purchases');
-        localStorage.removeItem('parties');
-        localStorage.removeItem('ledgerEntries');
-        localStorage.removeItem('payments');
-        localStorage.removeItem('inventoryMovements');
+      localStorage.clear();
     }
-};
+
+    // 2. Clear Supabase
+    if(isSupabaseReadyRef.current) {
+        try {
+            await supabase.from('inventory_movements').delete().neq('id', '0');
+            await supabase.from('ledger_entries').delete().neq('id', '0');
+            await supabase.from('sales').delete().neq('id', '0');
+            await supabase.from('purchases').delete().neq('id', '0');
+            await supabase.from('production_logs').delete().neq('id', '0');
+            await supabase.from('quotes').delete().neq('id', '0');
+            await supabase.from('orders').delete().neq('id', '0');
+            await supabase.from('blend_recipes').delete().neq('id', '0'); 
+            await supabase.from('green_coffees').delete().neq('id', '0');
+            await supabase.from('roast_stocks').delete().neq('id', '0');
+            await supabase.from('packaging_items').delete().neq('id', '0');
+            await supabase.from('payments').delete().neq('id', '0');
+            await supabase.from('parties').delete().neq('id', '0');
+            await supabase.from('categories').delete().neq('id', '0'); 
+            await supabase.from('system_settings').delete().neq('id', '0');
+        } catch (error) {
+            console.error("Reset Error:", error);
+            throw error;
+        }
+    }
+  };
 
   return (
     <StoreContext.Provider
       value={{
-        greenCoffees, roastStocks, recipes, productionLogs, packagingItems, orders, sales, quotes, purchases, settings,
-        parties, categories, ledgerEntries, payments,
+        greenCoffees,
+        roastStocks,
+        recipes,
+        productionLogs,
+        packagingItems,
+        orders,
+        sales,
+        quotes,
+        purchases,
+        settings,
+        parties,
+        categories,
+        ledgerEntries,
+        payments,
         inventoryMovements,
-        addGreenCoffee, updateGreenCoffee, deleteGreenCoffee,
-        addRoastAndDeductGreen, updateRoastStock, deleteRoastStock,
-        addRecipe, updateRecipe, deleteRecipe,
-        addPackagingItem, updatePackagingItem, deletePackagingItem,
-        
-        recordProduction, voidProductionLog,
-        addOrder, shipOrder, cancelOrder, voidSale,
-        addQuote, deleteQuote,
-        recordPurchase, voidPurchase,
+        addGreenCoffee,
+        updateGreenCoffee,
+        deleteGreenCoffee,
+        addRoastAndDeductGreen,
+        updateRoastStock,
+        deleteRoastStock,
+        addRecipe,
+        updateRecipe,
+        deleteRecipe,
+        addPackagingItem,
+        updatePackagingItem,
+        deletePackagingItem,
+        recordProduction,
+        voidProductionLog,
+        addOrder,
+        shipOrder,
+        cancelOrder,
+        voidSale,
+        addQuote,
+        deleteQuote,
+        recordPurchase,
+        voidPurchase,
         updateSettings,
-        addParty, updateParty, voidParty,
-        addCategory, voidCategory,
-        recordPayment, voidPayment,
-        
+        addParty,
+        updateParty,
+        voidParty,
+        addCategory,
+        voidCategory,
+        recordPayment,
+        voidPayment,
         getPartyBalance,
         getOnHand,
         importSystemData,
-        resetSystem
+        resetSystem,
+        generateTextReport,
       }}
     >
       {children}
@@ -709,6 +1393,8 @@ const resetSystem = () => {
 
 export const useStore = () => {
   const ctx = useContext(StoreContext);
-  if (!ctx) throw new Error("useStore must be used within StoreProvider");
+  if (!ctx) {
+    throw new Error('useStore must be used within a StoreProvider');
+  }
   return ctx;
 };
