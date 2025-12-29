@@ -97,6 +97,7 @@ export interface SystemSettings {
   companyName: string;
   currency: string;
   thresholds: ThresholdSettings;
+  exchangeRates: { usd: number; eur: number }; // YENİ: Döviz Kurları
   targetEmail?: string;
   enableWeeklyReport: boolean;
   lastReportDate?: string;
@@ -227,6 +228,7 @@ const DEFAULT_SETTINGS: SystemSettings = {
   targetEmail: 'info@editioncoffee.com',
   enableWeeklyReport: false,
   lastReportDate: '',
+  exchangeRates: { usd: 35.0, eur: 38.0 }, // YENİ: Varsayılan Kurlar
   thresholds: {
     greenCoffee: { critical: 50, low: 100 },
     roastStock: { critical: 10, low: 20 },
@@ -435,7 +437,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
           .eq('id', 'default')
           .maybeSingle();
         if (settingsRow && settingsRow.value) {
-          setSettings(settingsRow.value as SystemSettings);
+          // Merge with default to ensure new fields like exchangeRates exist
+          setSettings({ ...DEFAULT_SETTINGS, ...settingsRow.value });
         }
 
         isSupabaseReadyRef.current = true;
@@ -537,17 +540,12 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       if (settings.lastReportDate === todayStr) return;
 
       // 3. TARAYICI KİLİDİ (Browser Lock Mechanism)
-      // React Strict Mode veya hızlı refreshlerde tekrar mail atmaması için
-      // localStorage üzerinden senkronize kilit kontrolü yapıyoruz.
       const lockKey = `REPORT_SENT_LOCK_${todayStr.replace(/\s/g, '_')}`;
       if (localStorage.getItem(lockKey)) {
-        // "Bugün için tarayıcıda mail atıldı işareti var, işlemi durdur"
         return;
       }
 
       console.log("Otomatik Pazartesi Raporu Başlatılıyor...");
-
-      // Kilidi hemen koy (Diğer kopyalar buraya takılsın)
       localStorage.setItem(lockKey, 'true');
 
       try {
@@ -584,7 +582,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         await emailjs.send(serviceId, templateId, templateParams, publicKey);
         console.log("Otomatik rapor başarıyla gönderildi.");
 
-        // Başarılı olursa Supabase/State güncelle
         const newSettings = { ...settings, lastReportDate: todayStr };
         setSettings(newSettings);
         
@@ -598,17 +595,12 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
 
       } catch (error) {
         console.error("Otomatik rapor gönderme hatası:", error);
-        // Hata durumunda kilidi aç ki sonra tekrar deneyebilsin
         localStorage.removeItem(lockKey);
       }
     };
 
-    // İlk yüklemede kontrol et
     checkAndSendReport();
-
-    // Her 60 saniyede bir kontrol et
     const intervalId = setInterval(checkAndSendReport, 60000);
-
     return () => clearInterval(intervalId);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -654,7 +646,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     const calculatedRoastUnitCost = roast.stockKg > 0 ? totalInputCost / roast.stockKg : 0;
     const roastWithCost = { ...roast, unitCost: calculatedRoastUnitCost };
 
-    // 1. Update Local State
     const updatedGreen = { ...green, stockKg: green.stockKg - deductedGreenKg };
     setGreenCoffees((prev) => prev.map((g) => (g.id === greenId ? updatedGreen : g)));
     setRoastStocks((prev) => [...prev, roastWithCost]);
@@ -673,7 +664,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     };
     setInventoryMovements((prev) => [...prev, greenMove]);
 
-    // 2. Supabase Sync (Parallel)
     sbUpdate('green_coffees', greenId, updatedGreen);
     sbInsert('roast_stocks', roastWithCost);
     sbInsert('inventory_movements', greenMove);
@@ -725,7 +715,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       .reduce((sum, m) => sum + m.qtyDelta, 0);
   };
 
-  // Helper for voiding movements
   const voidInventoryMovementsBySource = (sourceType: string, sourceId: string) => {
     const relatedMovements = inventoryMovements.filter(
       (m) => m.sourceType === sourceType && m.sourceId === sourceId && m.status === 'Active'
@@ -748,11 +737,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     }));
 
     setInventoryMovements((prev) => [...prev, ...correctionMovements]);
-    // Bulk insert for corrections
     if(isSupabaseReadyRef.current) supabase.from('inventory_movements').insert(correctionMovements).then();
   };
 
-  // Helper for voiding ledger
   const voidLedgerEntriesBySource = (sourceType: string, sourceId: string) => {
     const relatedEntries = ledgerEntries.filter(
       (l) => l.sourceType === sourceType && l.sourceId === sourceId && l.status === 'Active'
@@ -792,7 +779,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       status: 'Active',
     };
     
-    // Updates
     setPurchases((prev) => [newLogWithUnitCost, ...prev]);
     sbInsert('purchases', newLogWithUnitCost);
 
@@ -831,7 +817,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     setInventoryMovements((prev) => [...prev, move]);
     sbInsert('inventory_movements', move);
 
-    // Stock Updates
     if (log.category === 'GreenCoffee') {
       const target = greenCoffees.find(g => g.id === log.itemId);
       if(target) {
@@ -889,7 +874,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
 
     let totalCoffeeCost = 0;
 
-    // Coffee Deduction Logic
     if (recipe) {
       recipe.ingredients.forEach((ing) => {
         const roast = roastStocks.find((r) => r.id === ing.roastId);
@@ -912,7 +896,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         });
       });
       
-      // Update Roast Stocks Locally & Remotely
       setRoastStocks((prev) => {
         const next = [...prev];
         recipe.ingredients.forEach((ing) => {
@@ -944,7 +927,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         totalCost: cost,
         status: 'Active',
       });
-      // Single Update
       if(roast) {
         const newStock = roast.stockKg - amountUsed;
         setRoastStocks(prev => prev.map(r => r.id === singleOriginId ? { ...r, stockKg: newStock} : r));
@@ -952,7 +934,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
-    // Packaging Deduction Logic
     let totalPackagingCost = 0;
     const processPackItem = (id: string | undefined, qty: number) => {
       if (!id || qty <= 0) return;
@@ -1005,7 +986,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     });
 
     setInventoryMovements((prev) => [...prev, ...movements]);
-    // Bulk insert movements
     if(isSupabaseReadyRef.current) supabase.from('inventory_movements').insert(movements).then();
 
     const newLog = { ...logData, id: newLogId, status: 'Active' as const, unitCost, totalCost: grandTotalCost };
@@ -1230,10 +1210,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
 
   const importSystemData = async (data: any) => {
     try {
-        // 1. First wipe everything
         await resetSystem();
 
-        // 2. Set Local State
         if (data.greenCoffees) setGreenCoffees(data.greenCoffees);
         if (data.roastStocks) setRoastStocks(data.roastStocks);
         if (data.recipes) setRecipes(data.recipes);
@@ -1250,30 +1228,20 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         if (data.payments) setPayments(data.payments);
         if (data.inventoryMovements) setInventoryMovements(data.inventoryMovements);
 
-        // 3. Bulk Insert into Supabase
         if(isSupabaseReadyRef.current) {
-            // Level 1: Master
             if(data.parties?.length) await supabase.from('parties').insert(data.parties);
             if(data.categories?.length) await supabase.from('categories').insert(data.categories);
             if(data.settings) await supabase.from('system_settings').upsert({ id: 'default', value: data.settings });
-
-            // Level 2: Items
             if(data.greenCoffees?.length) await supabase.from('green_coffees').insert(data.greenCoffees);
             if(data.roastStocks?.length) await supabase.from('roast_stocks').insert(data.roastStocks);
             if(data.packagingItems?.length) await supabase.from('packaging_items').insert(data.packagingItems);
-
-            // Level 3: Recipes & Orders
             if(data.recipes?.length) await supabase.from('blend_recipes').insert(data.recipes);
             if(data.orders?.length) await supabase.from('orders').insert(data.orders);
-
-            // Level 4: Transactions
             if(data.purchases?.length) await supabase.from('purchases').insert(data.purchases);
             if(data.productionLogs?.length) await supabase.from('production_logs').insert(data.productionLogs);
             if(data.sales?.length) await supabase.from('sales').insert(data.sales);
             if(data.quotes?.length) await supabase.from('quotes').insert(data.quotes);
             if(data.payments?.length) await supabase.from('payments').insert(data.payments);
-
-            // Level 5: Details
             if(data.inventoryMovements?.length) await supabase.from('inventory_movements').insert(data.inventoryMovements);
             if(data.ledgerEntries?.length) await supabase.from('ledger_entries').insert(data.ledgerEntries);
         }
@@ -1285,7 +1253,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const resetSystem = async () => {
-    // 1. Clear Local State
     setGreenCoffees([]);
     setRoastStocks([]);
     setRecipes([]);
@@ -1306,7 +1273,6 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       localStorage.clear();
     }
 
-    // 2. Clear Supabase
     if(isSupabaseReadyRef.current) {
         try {
             await supabase.from('inventory_movements').delete().neq('id', '0');

@@ -1,12 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Coffee, ArrowRight, AlertCircle, Lock, User } from 'lucide-react';
-
-// --- GÜVENLİK AYARLARI ---
-// Gerçek şifre: "1234" -> SHA-256 Hash hali
-// Bu hash'i kodun içinde saklamak, şifreyi saklamaktan çok daha güvenlidir.
-const TARGET_USERNAME = "admin"; 
-const TARGET_PASSWORD_HASH = "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4";
+import { supabase } from '../context/supabase'; // Dosya yolunuz farklıysa burayı düzeltin (Örn: './supabase')
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -16,40 +11,40 @@ const LoginPage: React.FC = () => {
 
   const navigate = useNavigate();
 
-  // Girilen şifreyi SHA-256 formatına çeviren yardımcı fonksiyon
-  const hashPassword = async (pass: string) => {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(pass);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    // İşlemi biraz yapay geciktiriyoruz (Login hissi vermek için)
-    setTimeout(async () => {
-      // 1. Kullanıcı adı kontrolü
-      if (username !== TARGET_USERNAME) {
-        setError('Hatalı kullanıcı adı veya şifre.');
-        setLoading(false);
-        return;
+    try {
+      // Supabase üzerinden kullanıcı doğrulama
+      // 'app_users' tablosunda kullanıcı adı ve şifresi eşleşen bir kayıt var mı?
+      const { data, error: dbError } = await supabase
+        .from('app_users')
+        .select('*')
+        .eq('username', username)
+        .eq('password', password) // Şifreler veritabanında düz metin tutulduğu için doğrudan karşılaştırıyoruz
+        .maybeSingle(); // Varsa tek kayıt, yoksa null döner
+
+      if (dbError) {
+        throw dbError;
       }
 
-      // 2. Şifre kontrolü (Hash karşılaştırması)
-      const inputHash = await hashPassword(password);
-      
-      if (inputHash === TARGET_PASSWORD_HASH) {
+      if (data) {
+        // Kullanıcı bulundu, giriş başarılı
         localStorage.setItem('isAuthenticated', 'true');
         navigate('/'); 
       } else {
+        // Kullanıcı bulunamadı
         setError('Hatalı kullanıcı adı veya şifre.');
-        setLoading(false);
       }
-    }, 800);
+
+    } catch (err) {
+      console.error("Login Hatası:", err);
+      setError('Bağlantı hatası veya sistemsel bir sorun oluştu.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -1,16 +1,17 @@
-import  { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { 
   TrendingUp, 
   TrendingDown, 
   Wallet, 
   AlertCircle, 
   ArrowRight, 
-  Users, 
-  Briefcase, 
-  Building2 
+  Calendar,
+  AlertTriangle,
+  Building2 // Şantiye ikonu eklendi
 } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { Link } from "react-router-dom";
+import { CustomSelect } from "../components/CustomSelect"; // CustomSelect import edildi
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("tr-TR", {
@@ -22,88 +23,137 @@ const formatCurrency = (amount: number) => {
 };
 
 export default function OverviewPage() {
-  const { islemler, kisiler } = useData();
+  const { islemler, kisiler, projeler } = useData();
+  const [selectedProjeId, setSelectedProjeId] = useState<string>("all");
+
+  // --- SEÇENEKLERİ HAZIRLA (CustomSelect İçin) ---
+  const projeOptions = useMemo(() => {
+    // En başa "Tümü" seçeneğini ekliyoruz, altına projeleri diziyoruz
+    return [
+      { value: "all", label: "TÜM ŞANTİYELER (TOPLAM)" },
+      ...projeler.map((p) => ({ value: p.id, label: p.ad }))
+    ];
+  }, [projeler]);
+
+  // --- FILTRELEME ---
+  // Tüm hesaplamalar bu filtrelenmiş listeye göre yapılır
+  const filteredIslemler = useMemo(() => {
+    if (selectedProjeId === "all") return islemler;
+    return islemler.filter(i => i.proje_id === selectedProjeId);
+  }, [islemler, selectedProjeId]);
 
   const stats = useMemo(() => {
-    // 1. GERÇEKLEŞEN NAKİT AKIŞI (Kasa Durumu)
-    // Tahsilat: Kasaya giren para
-    const tahsilat = islemler
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const next10Days = new Date(today);
+    next10Days.setDate(today.getDate() + 10);
+
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    // 1. GENEL KASA DURUMU
+    const tahsilat = filteredIslemler
       .filter((i) => i.tip === "tahsilat")
       .reduce((acc, curr) => acc + curr.tutar, 0);
 
-    // Ödeme: Kasadan çıkan para (Normal ödemeler + Günü gelmiş ve ÖDENDİ işaretlenmiş çekler)
-    const odeme = islemler
+    const odeme = filteredIslemler
       .filter((i) => i.tip === "odeme" || (i.tip === "cek" && i.is_bitiminde === 1))
       .reduce((acc, curr) => acc + curr.tutar, 0);
 
     const netDurum = tahsilat - odeme;
 
-    // 2. BEKLEYEN BAKİYELER (Cari Hesap Mantığı)
+    // 2. CARİ HESAPLAR
     let totalKalanBorc = 0;
     let totalKalanAlacak = 0;
 
     kisiler.forEach((kisi) => {
-      const kisiIslemleri = islemler.filter((t) => t.kisi_id === kisi.id);
+      // Kişinin sadece seçili projedeki işlemlerine bakılır
+      const kisiIslemleri = filteredIslemler.filter((t) => t.kisi_id === kisi.id);
 
-      // Borç Hesabı (Planlanan Ödemeler)
-      const topOdenecek = kisiIslemleri
-        .filter((t) => t.tip === "odenecek")
-        .reduce((sum, t) => sum + t.tutar, 0);
+      const topOdenecek = kisiIslemleri.filter((t) => t.tip === "odenecek").reduce((sum, t) => sum + t.tutar, 0);
+      const topOdeme = kisiIslemleri.filter((t) => t.tip === "odeme" || t.tip === "cek").reduce((sum, t) => sum + t.tutar, 0);
       
-      // Yapılan Ödeme (Nakit Ödemeler + Verilen Çekler)
-      // Çeki verdiğimiz an, cari hesaptan borç düşmelidir. Kasadan çıkıp çıkmaması önemli değil.
-      const topOdeme = kisiIslemleri
-        .filter((t) => t.tip === "odeme" || t.tip === "cek")
-        .reduce((sum, t) => sum + t.tutar, 0);
-      
-      // Alacak Hesabı
-      const topAlacak = kisiIslemleri
-        .filter((t) => t.tip === "alacak")
-        .reduce((sum, t) => sum + t.tutar, 0);
-      const topTahsilat = kisiIslemleri
-        .filter((t) => t.tip === "tahsilat")
-        .reduce((sum, t) => sum + t.tutar, 0);
+      const topAlacak = kisiIslemleri.filter((t) => t.tip === "alacak").reduce((sum, t) => sum + t.tutar, 0);
+      const topTahsilat = kisiIslemleri.filter((t) => t.tip === "tahsilat").reduce((sum, t) => sum + t.tutar, 0);
 
       totalKalanBorc += Math.max(0, topOdenecek - topOdeme);
       totalKalanAlacak += Math.max(0, topAlacak - topTahsilat);
     });
+
+    // 3. YAKLAŞAN VADELER
+    const yaklasanIslemler = filteredIslemler.filter(i => {
+      if (!i.tarih) return false;
+      const islemTarihi = new Date(i.tarih);
+      return islemTarihi >= today && islemTarihi <= next10Days;
+    });
+
+    const yaklasanBorc = yaklasanIslemler
+      .filter(i => i.tip === "odenecek")
+      .reduce((acc, curr) => ({ count: acc.count + 1, total: acc.total + curr.tutar }), { count: 0, total: 0 });
+    
+    const yaklasanAlacak = yaklasanIslemler
+      .filter(i => i.tip === "alacak")
+      .reduce((acc, curr) => ({ count: acc.count + 1, total: acc.total + curr.tutar }), { count: 0, total: 0 });
+
+    // 4. BU AY ÖZETİ
+    const buAyIslemler = filteredIslemler.filter(i => {
+      if (!i.tarih) return false;
+      const d = new Date(i.tarih);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    });
+
+    const buAyTahsilat = buAyIslemler
+      .filter(i => i.tip === "tahsilat")
+      .reduce((acc, curr) => acc + curr.tutar, 0);
+    
+    const buAyOdeme = buAyIslemler
+      .filter(i => i.tip === "odeme" || (i.tip === "cek" && i.is_bitiminde === 1))
+      .reduce((acc, curr) => acc + curr.tutar, 0);
 
     return { 
       tahsilat, 
       odeme, 
       netDurum, 
       odenecek: totalKalanBorc, 
-      alacak: totalKalanAlacak 
+      alacak: totalKalanAlacak,
+      yaklasan: { borc: yaklasanBorc, alacak: yaklasanAlacak },
+      buAy: { tahsilat: buAyTahsilat, odeme: buAyOdeme, net: buAyTahsilat - buAyOdeme }
     };
-  }, [islemler, kisiler]);
+  }, [filteredIslemler, kisiler]);
 
   // Son 5 İşlem
   const sonIslemler = useMemo(() => {
-    return [...islemler]
+    return [...filteredIslemler]
       .sort((a, b) => (b.tarih || "").localeCompare(a.tarih || ""))
       .slice(0, 5);
-  }, [islemler]);
-
-  const kisiStats = useMemo(() => {
-    return {
-      toplam: kisiler.length,
-      musteri: kisiler.filter((k) => k.rol === "musteri").length,
-      tedarikci: kisiler.filter((k) => k.rol === "tedarikci").length,
-      taseron: kisiler.filter((k) => k.rol === "taseron").length,
-    };
-  }, [kisiler]);
+  }, [filteredIslemler]);
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-20">
       {/* HEADER */}
       <div className="bg-white border-b border-neutral-200">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <h1 className="text-3xl font-light tracking-tight text-neutral-900">
-            GENEL BAKIŞ
-          </h1>
-          <p className="text-neutral-500 mt-1 font-light">
-            {new Date().toLocaleDateString("tr-TR", { day: 'numeric', month: 'long', year: 'numeric' })} itibarıyla finansal durum özeti.
-          </p>
+        <div className="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div>
+            <h1 className="text-3xl font-light tracking-tight text-neutral-900">
+              GENEL BAKIŞ
+            </h1>
+            <p className="text-neutral-500 mt-1 font-light">
+              {new Date().toLocaleDateString("tr-TR", { day: 'numeric', month: 'long', year: 'numeric' })} itibarıyla durum.
+            </p>
+          </div>
+
+          {/* ŞANTİYE FİLTRESİ (CustomSelect Kullanımı) */}
+          <div className="w-full md:w-80">
+             <CustomSelect 
+                label="GÖRÜNÜM / ŞANTİYE"
+                value={selectedProjeId}
+                onChange={(val) => setSelectedProjeId(val)}
+                options={projeOptions}
+                placeholder="Seçiniz"
+                icon={Building2}
+             />
+          </div>
         </div>
       </div>
 
@@ -111,7 +161,6 @@ export default function OverviewPage() {
         
         {/* --- 1. FİNANSAL KARTLAR --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* NET DURUM (Kasa) */}
           <div className="bg-white p-6 border border-neutral-200 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-bold text-neutral-400 tracking-wider uppercase">NET NAKİT DURUMU</span>
@@ -127,7 +176,6 @@ export default function OverviewPage() {
             </div>
           </div>
 
-          {/* TAHSİLAT (Kasa Giriş) */}
           <div className="bg-white p-6 border border-neutral-200 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-bold text-neutral-400 tracking-wider uppercase">TOPLAM GİRİŞ</span>
@@ -143,7 +191,6 @@ export default function OverviewPage() {
             </div>
           </div>
 
-          {/* ÖDEME (Kasa Çıkış) */}
           <div className="bg-white p-6 border border-neutral-200 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-bold text-neutral-400 tracking-wider uppercase">TOPLAM ÇIKIŞ</span>
@@ -159,7 +206,6 @@ export default function OverviewPage() {
             </div>
           </div>
 
-          {/* BEKLEYEN ÖDEMELER (Net Borçlar) */}
           <div className="bg-white p-6 border border-neutral-200 shadow-sm flex flex-col justify-between relative overflow-hidden">
             <div className="absolute top-0 right-0 w-1 h-full bg-red-500"></div>
             <div className="flex items-center justify-between mb-4">
@@ -177,10 +223,10 @@ export default function OverviewPage() {
           </div>
         </div>
 
-        {/* --- 2. ALT BÖLÜM (Grid Split) --- */}
+        {/* --- 2. ALT BÖLÜM --- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* SOL: SON İŞLEMLER TABLOSU */}
+          {/* SOL KOLON: SON İŞLEMLER */}
           <div className="lg:col-span-2 bg-white border border-neutral-200 shadow-sm">
             <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
               <h2 className="text-lg font-light text-neutral-900">Son Hareketler</h2>
@@ -211,6 +257,9 @@ export default function OverviewPage() {
                         ) : (
                           islem.tarih ? islem.tarih.split('-').reverse().join('.') : (islem.is_bitiminde ? 'İŞ BİTİMİ' : '-')
                         )}
+                        <div className="text-[9px] font-bold text-neutral-400 uppercase mt-1">
+                            {projeler.find(p => p.id === islem.proje_id)?.ad || "—"}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-neutral-800 font-light truncate max-w-xs">
                         {islem.aciklama}
@@ -238,36 +287,56 @@ export default function OverviewPage() {
             </div>
           </div>
 
-          {/* SAĞ: ÖZET BİLGİLER */}
+          {/* SAĞ KOLON */}
           <div className="space-y-6">
-            <div className="bg-neutral-900 text-white p-6 shadow-lg relative overflow-hidden">
-               <div className="absolute -right-6 -top-6 text-neutral-800 opacity-20">
-                 <Users size={140} />
+            
+            <div className="bg-white border border-neutral-200 shadow-sm overflow-hidden">
+               <div className="bg-orange-50 px-6 py-3 border-b border-orange-100 flex items-center gap-2 text-orange-800">
+                  <AlertTriangle size={16} />
+                  <span className="text-xs font-bold tracking-wider uppercase">YAKLAŞAN (10 GÜN)</span>
                </div>
-               <h3 className="text-lg font-light mb-6 relative z-10">Kişi & Kurumlar</h3>
-               <div className="space-y-4 relative z-10">
-                  <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
-                    <div className="flex items-center gap-2 text-neutral-400 text-sm">
-                      <Users size={16} /> Müşteriler
-                    </div>
-                    <span className="text-xl font-light">{kisiStats.musteri}</span>
+               <div className="p-6 space-y-4">
+                  <div className="flex justify-between items-center pb-3 border-b border-neutral-100">
+                     <span className="text-sm text-neutral-600">Ödenecekler</span>
+                     <div className="text-right">
+                        <div className="text-sm font-semibold text-red-600">{formatCurrency(stats.yaklasan.borc.total)}</div>
+                        <div className="text-[10px] text-neutral-400">{stats.yaklasan.borc.count} adet işlem</div>
+                     </div>
                   </div>
-                  <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
-                    <div className="flex items-center gap-2 text-neutral-400 text-sm">
-                      <Building2 size={16} /> Tedarikçiler
-                    </div>
-                    <span className="text-xl font-light">{kisiStats.tedarikci}</span>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
-                    <div className="flex items-center gap-2 text-neutral-400 text-sm">
-                      <Briefcase size={16} /> Taşeronlar
-                    </div>
-                    <span className="text-xl font-light">{kisiStats.taseron}</span>
-                  </div>
-                  <div className="pt-2 text-right">
-                    <span className="text-xs text-neutral-500 uppercase tracking-widest">TOPLAM: {kisiStats.toplam} KAYIT</span>
+                  <div className="flex justify-between items-center">
+                     <span className="text-sm text-neutral-600">Alacaklar</span>
+                     <div className="text-right">
+                        <div className="text-sm font-semibold text-green-600">{formatCurrency(stats.yaklasan.alacak.total)}</div>
+                        <div className="text-[10px] text-neutral-400">{stats.yaklasan.alacak.count} adet işlem</div>
+                     </div>
                   </div>
                </div>
+            </div>
+
+            <div className="bg-white border border-neutral-200 shadow-sm p-6 relative">
+              <div className="absolute top-4 right-4 text-neutral-100">
+                <Calendar size={60} />
+              </div>
+              <h3 className="text-xs font-bold text-neutral-400 tracking-wider uppercase mb-4 relative z-10">
+                BU AYIN ÖZETİ ({new Date().toLocaleDateString('tr-TR', { month: 'long' })})
+              </h3>
+              <div className="space-y-3 relative z-10">
+                <div className="flex justify-between items-end">
+                  <span className="text-xs text-neutral-500">Aylık Tahsilat</span>
+                  <span className="text-sm font-medium text-neutral-800">{formatCurrency(stats.buAy.tahsilat)}</span>
+                </div>
+                <div className="flex justify-between items-end">
+                  <span className="text-xs text-neutral-500">Aylık Ödeme</span>
+                  <span className="text-sm font-medium text-neutral-800">{formatCurrency(stats.buAy.odeme)}</span>
+                </div>
+                <div className="w-full border-t border-neutral-100 my-2"></div>
+                <div className="flex justify-between items-end">
+                  <span className="text-xs font-bold text-neutral-600">AYLIK NET</span>
+                  <span className={`text-base font-bold ${stats.buAy.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {stats.buAy.net > 0 ? '+' : ''}{formatCurrency(stats.buAy.net)}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div className="bg-white border border-neutral-200 p-6 shadow-sm">

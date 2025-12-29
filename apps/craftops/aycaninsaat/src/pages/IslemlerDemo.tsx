@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { ArrowRightLeft, Calendar, CreditCard, User, FileText, Check, X, AlertTriangle, Save, RefreshCw } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { ArrowRightLeft, Calendar, CreditCard, User, FileText, Check, X, AlertTriangle, Save, RefreshCw, Building2 } from "lucide-react";
 import { CustomSelect } from "../components/CustomSelect";
 import { useData, type Islem } from "../context/DataContext";
 
@@ -20,7 +20,6 @@ const formatDateDisplay = (dateStr: string | null) => {
   return `${parts[2]}.${parts[1]}.${parts[0]}`;
 };
 
-// Form Seçenekleri
 const ISLEM_TIP_OPTIONS = [
   { value: "tahsilat", label: "Tahsilat (+)" },
   { value: "odeme", label: "Ödeme (-)" },
@@ -42,18 +41,28 @@ const INITIAL_FORM = {
   tip: "",
   tutar: "",
   kisi_id: "",
+  proje_id: "", // Form'a eklendi
   aciklama: "",
   is_bitiminde: false,
   doviz: "TRY",
 };
 
 export default function IslemlerDemo() {
-  const { kisiler, islemler, addIslem, updateIslem, removeIslem } = useData();
+  const { kisiler, islemler, projeler, addIslem, updateIslem, removeIslem } = useData();
 
   const [form, setForm] = useState<any>(INITIAL_FORM);
   const [editForm, setEditForm] = useState<any>(null);
   const [query, setQuery] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Sayfa yüklendiğinde varsayılan projeyi seç (Aycan Prime Suites)
+  useEffect(() => {
+    if (projeler.length > 0 && !form.proje_id) {
+       // İsimle bulmaya çalış, bulamazsa ilkini seç
+       const defaultProject = projeler.find(p => p.ad.includes("Aycan")) || projeler[0];
+       setForm((prev: any) => ({ ...prev, proje_id: defaultProject.id }));
+    }
+  }, [projeler]);
 
   const getExchangeRate = (currency: string) => {
     if (currency === "USD") return 34.50;
@@ -66,7 +75,8 @@ export default function IslemlerDemo() {
   const saveCreate = async () => {
     try {
       if (!form.kisi_id || !form.tip || !form.tutar) return alert("Eksik bilgi: Kişi, Tip ve Tutar zorunludur.");
-      
+      if (!form.proje_id) return alert("Lütfen şantiye seçiniz."); // Kontrol
+
       const amountRaw = toAmount(form.tutar);
       const amountTL = amountRaw * getExchangeRate(form.doviz);
 
@@ -80,12 +90,14 @@ export default function IslemlerDemo() {
         tip: form.tip,
         is_bitiminde: form.tip === 'cek' ? 0 : (form.is_bitiminde ? 1 : 0),
         kisi_id: form.kisi_id,
+        proje_id: form.proje_id, // Eklendi
         aciklama: form.aciklama,
         doviz: form.doviz as any,
       };
 
       await addIslem(newRow);
-      setForm(INITIAL_FORM);
+      // Formu sıfırla ama projeyi koru
+      setForm({ ...INITIAL_FORM, proje_id: form.proje_id });
     } catch (error) {
       console.error("Kayıt hatası:", error);
       alert("İşlem kaydedilirken bir hata oluştu.");
@@ -99,6 +111,7 @@ export default function IslemlerDemo() {
       tarih: r.tarih || "",
       tutar: formatTR(r.tutar_raw),
       is_bitiminde: r.is_bitiminde === 1,
+      proje_id: r.proje_id || (projeler.length > 0 ? projeler[0].id : "") // Eski kayıtlarda null olabilir
     });
   };
 
@@ -118,6 +131,7 @@ export default function IslemlerDemo() {
         tip: editForm.tip,
         is_bitiminde: editForm.tip === 'cek' ? editForm.is_bitiminde : (editForm.is_bitiminde ? 1 : 0),
         kisi_id: editForm.kisi_id,
+        proje_id: editForm.proje_id, // Eklendi
         aciklama: editForm.aciklama,
         doviz: editForm.doviz,
       };
@@ -130,7 +144,6 @@ export default function IslemlerDemo() {
     }
   };
 
-  // --- SİLME ---
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
@@ -142,7 +155,6 @@ export default function IslemlerDemo() {
     }
   };
 
-  // --- ÇEK DURUMU ---
   const toggleCheckStatus = async (r: Islem) => {
     const newStatus = r.is_bitiminde === 1 ? 0 : 1;
     const confirmMsg = newStatus === 1 
@@ -158,7 +170,6 @@ export default function IslemlerDemo() {
     }
   };
 
-  // --- FİLTRELEME ---
   const filtered = useMemo(
     () =>
       islemler
@@ -169,16 +180,19 @@ export default function IslemlerDemo() {
     [islemler, query]
   );
 
-  // --- KİŞİ LİSTESİ (ALFABETİK SIRALI) ---
   const kisiOptions = useMemo(
     () => 
       kisiler
         .map((k) => ({ value: k.id, label: k.ad }))
-        .sort((a, b) => a.label.localeCompare(b.label, "tr")), // Türkçe A-Z Sıralama
+        .sort((a, b) => a.label.localeCompare(b.label, "tr")),
     [kisiler]
   );
 
-  // --- TİP ETİKET METNİ (TÜRKÇE) ---
+  const projeOptions = useMemo(
+    () => projeler.map(p => ({ value: p.id, label: p.ad })),
+    [projeler]
+  );
+
   const getTypeLabel = (tip: string, is_bitiminde: any) => {
     switch (tip) {
       case 'tahsilat': return "TAHSİLAT";
@@ -192,17 +206,12 @@ export default function IslemlerDemo() {
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-20">
-      {/* HEADER */}
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-light tracking-tight text-neutral-900">
-                İŞLEMLER
-              </h1>
-             <p className="text-neutral-500 mt-1 font-light">
-                Gelir / Gider / Çek Yönetimi
-             </p>
+              <h1 className="text-4xl font-light tracking-tight text-neutral-900">İŞLEMLER</h1>
+             <p className="text-neutral-500 mt-1 font-light">Gelir / Gider / Çek Yönetimi</p>
             </div>
             <div className="w-16 h-16 rounded-full bg-neutral-900 flex items-center justify-center">
               <ArrowRightLeft className="text-white" size={28} strokeWidth={1.5} />
@@ -212,19 +221,28 @@ export default function IslemlerDemo() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* CREATE FORM */}
         <div className="bg-white p-8 border border-neutral-200 mb-8 shadow-sm">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 rounded-full bg-neutral-900 flex items-center justify-center">
               <span className="text-white text-sm font-light">+</span>
             </div>
-            <h2 className="text-lg font-light tracking-tight text-neutral-900">
-              YENİ İŞLEM GİRİŞİ
-            </h2>
+            <h2 className="text-lg font-light tracking-tight text-neutral-900">YENİ İŞLEM GİRİŞİ</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-             {/* TARİH ALANI - GÜNCELLENDİ: w-full ve appearance-none eklendi */}
+            
+             {/* ŞANTİYE SEÇİMİ (YENİ) */}
+             <div className="md:col-span-12 w-full">
+                <CustomSelect 
+                    label="ŞANTİYE / PROJE" 
+                    value={form.proje_id} 
+                    onChange={(val) => setForm({...form, proje_id: val})} 
+                    options={projeOptions} 
+                    placeholder="Şantiye Seçiniz" 
+                    icon={Building2} 
+                />
+             </div>
+
              <div className="md:col-span-3 w-full">
               <label className="block text-xs font-medium text-neutral-500 mb-3 tracking-wider">
                 {form.tip === 'cek' ? 'ÇEK VADESİ' : 'TARİH'}
@@ -243,7 +261,6 @@ export default function IslemlerDemo() {
               </div>
             </div>
 
-            {/* İŞLEM TİPİ ALANI - GÜNCELLENDİ: w-full eklendi */}
             <div className="md:col-span-3 w-full">
                <CustomSelect
                 label="İŞLEM TİPİ"
@@ -302,7 +319,6 @@ export default function IslemlerDemo() {
           </div>
         </div>
 
-        {/* LİSTE */}
         <div className="bg-white border border-neutral-200 shadow-sm">
             <div className="p-4 border-b border-neutral-100 flex justify-end">
                 <input
@@ -318,6 +334,7 @@ export default function IslemlerDemo() {
                   <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
                       <th className="px-6 py-4 text-xs font-medium text-neutral-500 tracking-wider whitespace-nowrap">TARİH</th>
+                      <th className="px-6 py-4 text-xs font-medium text-neutral-500 tracking-wider whitespace-nowrap">ŞANTİYE</th>
                       <th className="px-6 py-4 text-xs font-medium text-neutral-500 tracking-wider whitespace-nowrap">TİP</th>
                       <th className="px-6 py-4 text-xs font-medium text-neutral-500 tracking-wider text-right whitespace-nowrap">TUTAR</th>
                       <th className="px-6 py-4 text-xs font-medium text-neutral-500 tracking-wider whitespace-nowrap">KİŞİ</th>
@@ -330,6 +347,11 @@ export default function IslemlerDemo() {
                         <tr key={r.id} className="hover:bg-neutral-50 group transition-colors">
                            <td className="px-6 py-5 font-light text-neutral-600 whitespace-nowrap">
                               {r.is_bitiminde && r.tip !== 'cek' ? "—" : formatDateDisplay(r.tarih)}
+                           </td>
+                           <td className="px-6 py-5 whitespace-nowrap">
+                              <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
+                                {projeler.find(p => p.id === r.proje_id)?.ad || "GENEL"}
+                              </span>
                            </td>
                            <td className="px-6 py-5 whitespace-nowrap">
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-neutral-200 bg-white text-neutral-600 text-xs font-medium uppercase tracking-wide">
@@ -378,7 +400,6 @@ export default function IslemlerDemo() {
         </div>
       </div>
 
-    {/* EDIT MODAL */}
       {editForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
            <div className="bg-white border border-neutral-200 shadow-2xl w-full max-w-5xl overflow-hidden max-h-[90vh] overflow-y-auto">
@@ -392,7 +413,11 @@ export default function IslemlerDemo() {
              <div className="p-8">
                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                  
-                 {/* TARİH ALANI: w-full ve appearance-none eklendi */}
+                 {/* EDIT: ŞANTİYE */}
+                 <div className="md:col-span-12 w-full">
+                    <CustomSelect label="ŞANTİYE" value={editForm.proje_id} onChange={(val) => setEditForm({...editForm, proje_id: val})} options={projeOptions} placeholder="Seç" icon={Building2} />
+                 </div>
+
                  <div className="md:col-span-4 w-full">
                     <label className="block text-xs font-medium text-neutral-500 mb-3 tracking-wider">TARİH</label>
                     <input 
@@ -404,7 +429,6 @@ export default function IslemlerDemo() {
                     />
                  </div>
                  
-                 {/* İŞLEM TİPİ: w-full eklendi */}
                  <div className="md:col-span-4 w-full">
                     <CustomSelect label="İŞLEM TİPİ" value={editForm.tip} onChange={(val) => setEditForm({...editForm, tip: val})} options={ISLEM_TIP_OPTIONS} placeholder="Seç" icon={CreditCard}/>
                  </div>
@@ -438,7 +462,6 @@ export default function IslemlerDemo() {
         </div>
       )}
 
-      {/* SİLME MODALI */}
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
            <div className="bg-white border border-neutral-200 shadow-2xl w-full max-w-md p-0 overflow-hidden">
@@ -446,7 +469,6 @@ export default function IslemlerDemo() {
                 <div className="mx-auto w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4"><AlertTriangle className="text-red-600" size={24} /></div>
                 <h3 className="text-lg font-light text-neutral-900 tracking-tight">EMİN MİSİNİZ?</h3>
                 <h2 className="text-lg font-light text-neutral-400 tracking-tight">Bu işlem geri alınamaz.</h2>
-                
              </div>
              <div className="flex p-4 gap-4">
                <button onClick={() => setDeleteId(null)} className="flex-1 py-3 bg-white border border-neutral-300">VAZGEÇ</button>

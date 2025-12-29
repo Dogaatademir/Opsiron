@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { MOCK_KISILER, MOCK_ISLEMLER } from "./mockData"; // Mock verileri import ettik
 
 // --- SUPABASE AYARLARI ---
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
@@ -8,6 +7,11 @@ const supabaseAnon = import.meta.env.VITE_SUPABASE_ANON as string;
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnon);
 
 // --- TİPLER ---
+export interface Proje {
+  id: string;
+  ad: string;
+}
+
 export interface Kisi {
   id: string;
   ad: string;
@@ -25,6 +29,7 @@ export interface Islem {
   tip: "tahsilat" | "odeme" | "odenecek" | "alacak" | "cek";
   is_bitiminde: number | null;
   kisi_id: string | null;
+  proje_id: string | null;
   aciklama: string | null;
   doviz: "TRY" | "USD" | "EUR" | "ALTIN" | null;
   created_at?: string;
@@ -33,148 +38,160 @@ export interface Islem {
 interface DataContextType {
   kisiler: Kisi[];
   islemler: Islem[];
+  projeler: Proje[];
   loading: boolean;
-  isMock: boolean; // Mock modunda mıyız?
-  toggleDataSource: () => void; // Mod değiştirme fonksiyonu
-  loadBackup: (data: { kisiler: Kisi[], islemler: Islem[] }) => void; // Yedek yükleme
+  
+  // YEDEK YÜKLEME FONKSİYONU (DB YAZAR)
+  restoreData: (data: any) => Promise<void>;
+  
+  // --- CRUD METHODLARI ---
   addKisi: (kisi: Kisi) => Promise<void>;
   removeKisi: (id: string) => Promise<void>;
+  
   addIslem: (islem: Islem) => Promise<void>;
   updateIslem: (islem: Islem) => Promise<void>;
   removeIslem: (id: string) => Promise<void>;
+
+  addProje: (ad: string) => Promise<void>;
+  updateProje: (id: string, ad: string) => Promise<void>;
+  removeProje: (id: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  // Varsayılan olarak localStorage'dan tercihi oku, yoksa false (Supabase)
-  const [isMock, setIsMock] = useState<boolean>(() => {
-    const saved = localStorage.getItem("app_data_source");
-    return saved === "mock";
-  });
-  
   const [kisiler, setKisiler] = useState<Kisi[]>([]);
   const [islemler, setIslemler] = useState<Islem[]>([]);
+  const [projeler, setProjeler] = useState<Proje[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Mod değiştiğinde veya ilk açılışta veriyi çek
   useEffect(() => {
     fetchData();
-    localStorage.setItem("app_data_source", isMock ? "mock" : "supabase");
-  }, [isMock]);
-
-  // Mod değiştirici
-  const toggleDataSource = () => {
-    setIsMock((prev) => !prev);
-  };
-
-  // Yedek Yükleyici
-  const loadBackup = (data: { kisiler: Kisi[], islemler: Islem[] }) => {
-    // Gelen veriyi state'e yükle (Supabase'i ezmez, sadece anlık görünümü değiştirir)
-    // Eğer Supabase modundaysanız ve veritabanını da güncellemek isterseniz,
-    // burada bir döngü ile insert işlemi yapılması gerekir ancak bu riskli olabilir.
-    // Bu fonksiyon şu an sadece "Görüntüleme" amaçlı yükler.
-    setKisiler(data.kisiler || []);
-    setIslemler(data.islemler || []);
-    alert("Yedek başarıyla yüklendi. (Not: Realtime modundaysanız bu veriler veritabanına işlenmedi, sadece ekranda güncellendi.)");
-  };
+  }, []);
 
   async function fetchData() {
     setLoading(true);
     try {
-      if (isMock) {
-        // --- MOCK MODU ---
-        // Biraz gecikme simüle edelim ki yükleniyor görünsün
-        setTimeout(() => {
-          setKisiler(MOCK_KISILER);
-          setIslemler(MOCK_ISLEMLER as Islem[]);
-          setLoading(false);
-        }, 500);
-      } else {
-        // --- SUPABASE MODU ---
-        const { data: kisilerData, error: kError } = await supabase
-          .from("kisiler")
-          .select("*")
-          .order("ad", { ascending: true });
-        if (kError) throw kError;
+      const { data: projelerData } = await supabase.from("projeler").select("*").order("ad", { ascending: true });
+      const { data: kisilerData } = await supabase.from("kisiler").select("*").order("ad", { ascending: true });
+      const { data: islemlerData } = await supabase.from("islemler").select("*").order("created_at", { ascending: false }).order("tarih", { ascending: false, nullsFirst: false });
 
-        const { data: islemlerData, error: iError } = await supabase
-          .from("islemler")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .order("tarih", { ascending: false, nullsFirst: false });
-        if (iError) throw iError;
-
-        setKisiler(kisilerData || []);
-        setIslemler(islemlerData || []);
-        setLoading(false);
-      }
+      setProjeler(projelerData || []);
+      setKisiler(kisilerData || []);
+      setIslemler(islemlerData || []);
     } catch (error) {
       console.error("Veri çekme hatası:", error);
+    } finally {
       setLoading(false);
     }
   }
 
-  // --- CRUD WRAPPERS ---
-  // Mock modundaysa sadece state günceller, değilse DB'ye yazar.
+  // --- YEDEK YÜKLEME (RESTORE) ---
+  const restoreData = async (backup: any) => {
+    setLoading(true);
+    try {
+      // 1. Önce PROJELER (Foreign Key Bağımlılığı için en üstte olmalı)
+      if (backup.projeler && backup.projeler.length > 0) {
+        // created_at gibi sistem alanlarını temizleyip upsert yapıyoruz
+        const cleanProjeler = backup.projeler.map(({ created_at, ...rest }: any) => rest);
+        const { error: pError } = await supabase.from("projeler").upsert(cleanProjeler);
+        if (pError) throw pError;
+      }
 
-  const addKisi = async (kisi: Kisi) => {
-    if (!isMock) {
-      const { created_at, ...kisiData } = kisi; 
-      const { error } = await supabase.from("kisiler").insert(kisiData);
-      if (error) throw error;
+      // 2. Sonra KİŞİLER
+      if (backup.kisiler && backup.kisiler.length > 0) {
+        const cleanKisiler = backup.kisiler.map(({ created_at, ...rest }: any) => rest);
+        const { error: kError } = await supabase.from("kisiler").upsert(cleanKisiler);
+        if (kError) throw kError;
+      }
+
+      // 3. En Son İŞLEMLER (Çünkü Proje ve Kişi ID'lerine bağlı)
+      if (backup.islemler && backup.islemler.length > 0) {
+        const cleanIslemler = backup.islemler.map(({ created_at, ...rest }: any) => rest);
+        const { error: iError } = await supabase.from("islemler").upsert(cleanIslemler);
+        if (iError) throw iError;
+      }
+
+      // 4. Verileri tekrar çekerek arayüzü güncelle
+      await fetchData();
+      alert("Veriler başarıyla veritabanına geri yüklendi!");
+
+    } catch (error: any) {
+      console.error("Geri yükleme hatası:", error);
+      alert("Geri yükleme sırasında hata oluştu: " + error.message);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // --- KİŞİLER CRUD ---
+  const addKisi = async (kisi: Kisi) => {
+    const { created_at, ...kisiData } = kisi; 
+    const { error } = await supabase.from("kisiler").insert(kisiData);
+    if (error) throw error;
     setKisiler((prev) => [kisi, ...prev]);
   };
 
   const removeKisi = async (id: string) => {
-    if (!isMock) {
-      const { error } = await supabase.from("kisiler").delete().eq("id", id);
-      if (error) throw error;
-    }
+    const { error } = await supabase.from("kisiler").delete().eq("id", id);
+    if (error) throw error;
     setKisiler((prev) => prev.filter((k) => k.id !== id));
   };
 
+  // --- İŞLEMLER CRUD ---
   const addIslem = async (islem: Islem) => {
-    if (!isMock) {
-      const { created_at, ...islemData } = islem;
-      const { error } = await supabase.from("islemler").insert(islemData);
-      if (error) throw error;
-    }
+    const { created_at, ...islemData } = islem;
+    const { error } = await supabase.from("islemler").insert(islemData);
+    if (error) throw error;
     setIslemler((prev) => [islem, ...prev]);
   };
 
   const updateIslem = async (islem: Islem) => {
-    if (!isMock) {
-      const { created_at, ...islemData } = islem;
-      const { error } = await supabase.from("islemler").update(islemData).eq("id", islem.id);
-      if (error) throw error;
-    }
+    const { created_at, ...islemData } = islem;
+    const { error } = await supabase.from("islemler").update(islemData).eq("id", islem.id);
+    if (error) throw error;
     setIslemler((prev) => prev.map((i) => (i.id === islem.id ? islem : i)));
   };
 
   const removeIslem = async (id: string) => {
-    if (!isMock) {
-      const { error } = await supabase.from("islemler").delete().eq("id", id);
-      if (error) throw error;
-    }
+    const { error } = await supabase.from("islemler").delete().eq("id", id);
+    if (error) throw error;
     setIslemler((prev) => prev.filter((i) => i.id !== id));
+  };
+
+  // --- PROJELER CRUD ---
+  const addProje = async (ad: string) => {
+    const newProje = { id: crypto.randomUUID(), ad };
+    const { error } = await supabase.from("projeler").insert({ id: newProje.id, ad: newProje.ad });
+    if (error) throw error;
+    setProjeler((prev) => [...prev, newProje]);
+  };
+
+  const updateProje = async (id: string, ad: string) => {
+    const { error } = await supabase.from("projeler").update({ ad }).eq("id", id);
+    if (error) throw error;
+    setProjeler((prev) => prev.map(p => p.id === id ? { ...p, ad } : p));
+  };
+
+  const removeProje = async (id: string) => {
+    const hasTransactions = islemler.some(i => i.proje_id === id);
+    if (hasTransactions) {
+      throw new Error("Bu şantiyeye ait finansal kayıtlar var. Önce kayıtları silmelisiniz.");
+    }
+
+    const { error } = await supabase.from("projeler").delete().eq("id", id);
+    if (error) throw error;
+    setProjeler((prev) => prev.filter(p => p.id !== id));
   };
 
   return (
     <DataContext.Provider
       value={{ 
-        kisiler, 
-        islemler, 
-        loading, 
-        isMock, 
-        toggleDataSource, 
-        loadBackup,
-        addKisi, 
-        removeKisi, 
-        addIslem, 
-        updateIslem, 
-        removeIslem 
+        kisiler, islemler, projeler, loading,
+        restoreData, // Yeni fonksiyon
+        addKisi, removeKisi, 
+        addIslem, updateIslem, removeIslem,
+        addProje, updateProje, removeProje
       }}
     >
       {children}

@@ -8,37 +8,53 @@ import {
   Globe, 
   Moon,
   CheckCircle2,
-  Database,
   Upload,
   Server,
-  
+  Plus,
+  Trash2,
+  Pencil,
+  X,
+  Check
 } from 'lucide-react';
 
 import { useData } from "../context/DataContext";
 
 export default function SettingsPage() {
-  const { kisiler, islemler, isMock, toggleDataSource, loadBackup } = useData();
+  const { 
+    kisiler, 
+    islemler, 
+    projeler, 
+    restoreData, // loadBackup yerine restoreData kullanıyoruz
+    addProje,
+    updateProje,
+    removeProje,
+    loading // Yükleme durumunu göstermek için
+  } = useData();
   
-  // Local State simülasyonları
   const [companyName, setCompanyName] = useState("Aycan İnşaat");
   const [footerText, setFooterText] = useState("Powered by CraftOps");
   const [currency, setCurrency] = useState("TRY");
   const [isSaved, setIsSaved] = useState(false);
 
-  // Dosya yükleme referansı
+  // -- PROJE YÖNETİMİ STATE --
+  const [newProjeAd, setNewProjeAd] = useState("");
+  const [editingProjeId, setEditingProjeId] = useState<string | null>(null);
+  const [editProjeText, setEditProjeText] = useState("");
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- ACTIONS ---
 
-  // 1. Verileri JSON olarak indir (EXPORT)
   const handleExportData = () => {
     const data = {
       date: new Date().toISOString(),
-      source: isMock ? "mock_data" : "supabase_realtime",
+      source: "supabase_live",
       summary: {
+        total_projects: projeler.length,
         total_transactions: islemler.length,
         total_contacts: kisiler.length
       },
+      projeler,
       kisiler,
       islemler
     };
@@ -53,7 +69,6 @@ export default function SettingsPage() {
     document.body.removeChild(link);
   };
 
-  // 2. Yedeği Geri Yükle (IMPORT)
   const handleImportClick = () => {
     fileInputRef.current?.click();
   };
@@ -63,12 +78,15 @@ export default function SettingsPage() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const json = JSON.parse(e.target?.result as string);
         if (json.kisiler && json.islemler) {
-          if (confirm(`Yedek dosyasında ${json.kisiler.length} kişi ve ${json.islemler.length} işlem bulundu. Yüklemek istiyor musunuz?`)) {
-            loadBackup(json);
+          const projeSayisi = json.projeler ? json.projeler.length : 0;
+          const confirmMsg = `DİKKAT: BU İŞLEM VERİTABANINA YAZACAKTIR!\n\nYedek içeriği:\n- ${projeSayisi} Proje\n- ${json.kisiler.length} Kişi\n- ${json.islemler.length} İşlem\n\nMevcut verilerin üzerine yazmak ve olmayanları eklemek istiyor musunuz?`;
+          
+          if (confirm(confirmMsg)) {
+            await restoreData(json);
           }
         } else {
           alert("Hata: Geçersiz yedek dosyası formatı.");
@@ -79,20 +97,53 @@ export default function SettingsPage() {
       }
     };
     reader.readAsText(file);
-    // Inputu temizle ki aynı dosyayı tekrar seçebilelim
+    // Aynı dosyayı tekrar seçebilmek için input'u sıfırla
     event.target.value = "";
   };
 
-  // 3. Ayarları Kaydet
   const handleSave = () => {
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
   };
 
-  // 4. Varsayılana Dön
   const handleReset = () => {
-    if(window.confirm("Sayfa yenilenecek ve veriler kaynağa göre tekrar çekilecek. Emin misiniz?")) {
+    if(window.confirm("Sayfa yenilenecek. Emin misiniz?")) {
         window.location.reload();
+    }
+  };
+
+  // --- PROJE FONKSİYONLARI ---
+  const handleAddProje = async () => {
+    if (!newProjeAd.trim()) return;
+    try {
+      await addProje(newProjeAd.trim());
+      setNewProjeAd("");
+    } catch (error) {
+      alert("Proje eklenirken hata oluştu.");
+    }
+  };
+
+  const handleStartEditProje = (id: string, currentAd: string) => {
+    setEditingProjeId(id);
+    setEditProjeText(currentAd);
+  };
+
+  const handleSaveEditProje = async (id: string) => {
+    if (!editProjeText.trim()) return;
+    try {
+      await updateProje(id, editProjeText.trim());
+      setEditingProjeId(null);
+    } catch (error) {
+      alert("Güncelleme başarısız.");
+    }
+  };
+
+  const handleDeleteProje = async (id: string) => {
+    if (!confirm("Bu şantiyeyi silmek istediğinize emin misiniz?")) return;
+    try {
+      await removeProje(id);
+    } catch (error: any) {
+      alert(error.message || "Silme işlemi başarısız. Bu şantiyeye bağlı işlemler olabilir.");
     }
   };
 
@@ -120,46 +171,89 @@ export default function SettingsPage() {
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* --- SOL KOLON: FİRMA AYARLARI --- */}
+          {/* --- SOL KOLON --- */}
           <div className="lg:col-span-2 space-y-8">
             
-            {/* VERİ KAYNAĞI SEÇİMİ (YENİ) */}
-            <div className={`border p-8 transition-colors duration-300 ${isMock ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'}`}>
-               <div className="flex items-center gap-3 mb-6 pb-4 border-b border-neutral-200/50">
-                  <Database className={isMock ? "text-orange-500" : "text-green-600"} size={20} />
-                  <h2 className={`text-lg font-medium tracking-tight ${isMock ? 'text-orange-800' : 'text-green-800'}`}>VERİ KAYNAĞI</h2>
-               </div>
-               
-               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <div className="text-xl font-light mb-1">
-                      {isMock ? "Demo Modu (Mock Data)" : "Canlı Mod (Supabase)"}
+            {/* 1. ŞANTİYE YÖNETİMİ */}
+            <div className="bg-white border border-neutral-200 p-8">
+                <div className="flex items-center gap-3 mb-6 border-b border-neutral-100 pb-4">
+                    <Building className="text-neutral-400" size={20} />
+                    <h2 className="text-lg font-light text-neutral-900 tracking-tight">ŞANTİYE YÖNETİMİ</h2>
+                </div>
+
+                <div className="space-y-6">
+                    {/* Ekleme Inputu */}
+                    <div className="flex gap-2">
+                        <input 
+                            placeholder="Yeni şantiye adı giriniz..."
+                            value={newProjeAd}
+                            onChange={(e) => setNewProjeAd(e.target.value)}
+                            className="flex-1 p-3 bg-neutral-50 border border-neutral-200 text-neutral-900 outline-none focus:border-neutral-900 font-light transition-colors"
+                        />
+                        <button 
+                            onClick={handleAddProje}
+                            disabled={!newProjeAd.trim()}
+                            className="px-6 bg-neutral-900 text-white hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed transition-colors"
+                        >
+                            <Plus size={20} />
+                        </button>
                     </div>
-                    <p className="text-sm opacity-70">
-                      {isMock 
-                        ? "Veriler yerel test dosyasından çekiliyor. Değişiklikler veritabanına kaydedilmez." 
-                        : "Veriler gerçek zamanlı veritabanına bağlıdır. Değişiklikler kalıcıdır."}
-                    </p>
-                  </div>
-                  
-                  <button 
-                    onClick={toggleDataSource}
-                    className={`
-                      px-6 py-3 rounded-lg border flex items-center gap-2 transition-all shadow-sm active:scale-95
-                      ${isMock 
-                        ? 'bg-white border-orange-300 text-orange-700 hover:bg-orange-100' 
-                        : 'bg-white border-green-300 text-green-700 hover:bg-green-100'}
-                    `}
-                  >
-                    <RefreshCw size={18} />
-                    <span className="font-medium text-sm">
-                      {isMock ? "CANLI MODA GEÇ" : "DEMO MODUNA GEÇ"}
-                    </span>
-                  </button>
-               </div>
+
+                    {/* Proje Listesi */}
+                    <div className="space-y-2">
+                        {projeler.map((p) => (
+                            <div key={p.id} className="flex items-center justify-between p-4 border border-neutral-100 bg-white hover:border-neutral-300 transition-colors group">
+                                {editingProjeId === p.id ? (
+                                    // Düzenleme Modu
+                                    <div className="flex items-center gap-2 w-full">
+                                        <input 
+                                            value={editProjeText}
+                                            onChange={(e) => setEditProjeText(e.target.value)}
+                                            className="flex-1 p-2 bg-neutral-50 border border-neutral-300 outline-none"
+                                            autoFocus
+                                        />
+                                        <button onClick={() => handleSaveEditProje(p.id)} className="p-2 text-green-600 hover:bg-green-50 rounded"><Check size={18}/></button>
+                                        <button onClick={() => setEditingProjeId(null)} className="p-2 text-red-600 hover:bg-red-50 rounded"><X size={18}/></button>
+                                    </div>
+                                ) : (
+                                    // Normal Görünüm
+                                    <>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-500 font-bold text-xs">
+                                                {p.ad.charAt(0)}
+                                            </div>
+                                            <span className="font-light text-neutral-800">{p.ad}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button 
+                                                onClick={() => handleStartEditProje(p.id, p.ad)}
+                                                className="p-2 text-neutral-400 hover:text-neutral-900 hover:bg-neutral-50 rounded"
+                                                title="Düzenle"
+                                            >
+                                                <Pencil size={16} />
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDeleteProje(p.id)}
+                                                className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                                title="Sil"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        ))}
+                        {projeler.length === 0 && (
+                            <div className="text-center py-6 text-neutral-400 text-sm font-light italic">
+                                Henüz şantiye eklenmedi.
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
 
-            {/* Firma Bilgileri Kartı */}
+            {/* 2. FİRMA BİLGİLERİ KARTI */}
             <div className="bg-white border border-neutral-200 p-8 relative overflow-hidden">
                <div className="flex items-center gap-3 mb-6 border-b border-neutral-100 pb-4">
                   <Building className="text-neutral-400" size={20} />
@@ -215,14 +309,13 @@ export default function SettingsPage() {
                   </button>
                </div>
             </div>
-
-            {/* Uygulama Tercihleri */}
-            <div className="bg-white border border-neutral-200 p-8">
+            
+             {/* 3. UYGULAMA TERCİHLERİ */}
+             <div className="bg-white border border-neutral-200 p-8">
                <div className="flex items-center gap-3 mb-6 border-b border-neutral-100 pb-4">
                   <Globe className="text-neutral-400" size={20} />
                   <h2 className="text-lg font-light text-neutral-900 tracking-tight">UYGULAMA TERCİHLERİ</h2>
                </div>
-
                <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 bg-neutral-50 border border-neutral-100">
                      <div className="flex items-center gap-3">
@@ -257,8 +350,12 @@ export default function SettingsPage() {
                         <div className="flex justify-between items-center border-b border-neutral-800 pb-2">
                             <span className="text-sm text-neutral-400">Aktif Kaynak</span>
                             <span className="text-sm font-bold bg-white/10 px-2 py-1 rounded">
-                              {isMock ? "MOCK (DEMO)" : "SUPABASE (DB)"}
+                               SUPABASE (LIVE)
                             </span>
+                        </div>
+                        <div className="flex justify-between items-center border-b border-neutral-800 pb-2">
+                            <span className="text-sm text-neutral-400">Aktif Şantiyeler</span>
+                            <span className="text-xl font-light">{projeler.length}</span>
                         </div>
                         <div className="flex justify-between items-center border-b border-neutral-800 pb-2">
                             <span className="text-sm text-neutral-400">Kayıtlı Kişi</span>
@@ -280,16 +377,15 @@ export default function SettingsPage() {
              <div className="bg-white border border-neutral-200 p-6 space-y-4">
                 <h3 className="text-xs font-bold text-neutral-400 tracking-wider uppercase mb-4">VERİ YÖNETİMİ</h3>
                 
-                {/* YEDEK AL BUTONU */}
                 <button 
                   onClick={handleExportData}
-                  className="w-full py-4 px-4 bg-neutral-50 border border-neutral-200 text-neutral-900 hover:bg-neutral-100 transition-colors flex items-center justify-center gap-2 group"
+                  disabled={loading}
+                  className="w-full py-4 px-4 bg-neutral-50 border border-neutral-200 text-neutral-900 hover:bg-neutral-100 transition-colors flex items-center justify-center gap-2 group disabled:opacity-50"
                 >
                     <Download size={18} className="text-neutral-500 group-hover:text-neutral-900 transition-colors" />
                     <span className="font-light text-sm">YEDEK AL (.JSON)</span>
                 </button>
 
-                {/* YEDEK YÜKLE BUTONU & GİZLİ INPUT */}
                 <input 
                   type="file" 
                   ref={fileInputRef}
@@ -299,23 +395,30 @@ export default function SettingsPage() {
                 />
                 <button 
                   onClick={handleImportClick}
-                  className="w-full py-4 px-4 bg-neutral-50 border border-neutral-200 text-neutral-900 hover:bg-neutral-100 transition-colors flex items-center justify-center gap-2 group"
+                  disabled={loading}
+                  className="w-full py-4 px-4 bg-neutral-50 border border-neutral-200 text-neutral-900 hover:bg-neutral-100 transition-colors flex items-center justify-center gap-2 group disabled:opacity-50"
                 >
-                    <Upload size={18} className="text-neutral-500 group-hover:text-neutral-900 transition-colors" />
-                    <span className="font-light text-sm">YEDEKTEN DÖN (RESTORE)</span>
+                   {loading ? (
+                     <span className="animate-spin w-5 h-5 border-2 border-neutral-400 border-t-neutral-900 rounded-full"></span>
+                   ) : (
+                     <>
+                       <Upload size={18} className="text-neutral-500 group-hover:text-neutral-900 transition-colors" />
+                       <span className="font-light text-sm">YEDEKTEN DÖN (RESTORE)</span>
+                     </>
+                   )}
                 </button>
 
-                {/* VARSAYILANA DÖN BUTONU */}
                 <button 
                   onClick={handleReset}
-                  className="w-full py-4 px-4 bg-white border border-red-100 text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-2 group"
+                  disabled={loading}
+                  className="w-full py-4 px-4 bg-white border border-red-100 text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-2 group disabled:opacity-50"
                 >
                     <RefreshCw size={18} className="text-red-400 group-hover:text-red-600 transition-colors" />
-                    <span className="font-light text-sm">SİSTEMİ YENİLE</span>
+                    <span className="font-light text-sm">SAYFAYI YENİLE</span>
                 </button>
                 
                 <p className="text-[10px] text-neutral-400 text-center pt-2">
-                    "Yedekten Dön" işlemi o anki ekranı günceller. <br/> "Sistemi Yenile" işlemi verileri kaynağa göre (Mock/DB) sıfırlar.
+                    "Yedekten Dön" işlemi verileri veritabanına kalıcı olarak işler.
                 </p>
              </div>
 
