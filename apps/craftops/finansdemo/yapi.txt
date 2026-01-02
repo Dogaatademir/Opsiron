@@ -1,0 +1,33 @@
+craftops-demo
+├── README.md
+├── eslint.config.js
+├── index.html
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── public
+│   └── vite.svg
+├── src
+│   ├── App.css
+│   ├── App.tsx
+│   ├── assets
+│   │   └── react.svg
+│   ├── components
+│   │   ├── CustomSelect.tsx
+│   │   ├── Layout.tsx
+│   │   └── Modal.tsx
+│   ├── context
+│   │   └── FinanceContext.tsx
+│   ├── data
+│   │   └── dummyData.ts
+│   ├── index.css
+│   ├── main.jsx
+│   └── pages
+│       ├── EntitiesPage.tsx
+│       ├── FinanceDashboard.tsx
+│       ├── ReportsPage.tsx
+│       ├── SettingsPage.tsx
+│       └── TransactionsPage.tsx
+├── tailwind.config.js
+├── vite.config.js
+└── yapi.txt

@@ -2,21 +2,29 @@
   command = "npm run install:all && npm run build:all"
   publish = "dist"
 
-# 1. KURAL: Alt Uygulama Yönlendirmesi
-# force = true satırını KALDIRDIK.
-# Böylece var olan JS/CSS dosyalarını olduğu gibi sunacak, 
-# sadece bulunamayan sayfaları index.html'e yönlendirecek.
+# --- YENİ EKLENEN KURAL: STOK DEMO ---
+[[redirects]]
+  from = "/craftops/stokdemo/*"
+  to = "/craftops/stokdemo/index.html"
+  status = 200
+
+  [[redirects]]
+  from = "/craftops/finansdemo/*"
+  to = "/craftops/finansdemo/index.html"
+  status = 200
+
+# MEVCUT KURALLAR
 [[redirects]]
   from = "/craftops/editioncoffeeroastery/*"
   to = "/craftops/editioncoffeeroastery/index.html"
   status = 200
 
-  [[redirects]]
+[[redirects]]
   from = "/craftops/aycaninsaat/*"
   to = "/craftops/aycaninsaat/index.html"
   status = 200
 
-# 2. KURAL: Ana Uygulama Yönlendirmesi
+# ANA UYGULAMA (En Sonda Olmalı)
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -25,8 +25,7 @@ opsiron-monorepo
 │   │   │   │   │   ├── CustomSelect.tsx
 │   │   │   │   │   └── Layout.tsx
 │   │   │   │   ├── context
-│   │   │   │   │   ├── DataContext.tsx
-│   │   │   │   │   └── mockData.ts
+│   │   │   │   │   └── DataContext.tsx
 │   │   │   │   ├── index.css
 │   │   │   │   ├── main.tsx
 │   │   │   │   └── pages
@@ -42,16 +41,57 @@ opsiron-monorepo
 │   │   │   ├── tsconfig.json
 │   │   │   ├── tsconfig.node.json
 │   │   │   └── vite.config.ts
-│   │   └── editioncoffeeroastery
+│   │   ├── editioncoffeeroastery
+│   │   │   ├── README.md
+│   │   │   ├── editionroastery-tree.txt
+│   │   │   ├── eslint.config.js
+│   │   │   ├── index.html
+│   │   │   ├── package-lock.json
+│   │   │   ├── package.json
+│   │   │   ├── postcss.config.js
+│   │   │   ├── public
+│   │   │   ├── src
+│   │   │   │   ├── App.css
+│   │   │   │   ├── App.tsx
+│   │   │   │   ├── assets
+│   │   │   │   │   └── react.svg
+│   │   │   │   ├── components
+│   │   │   │   │   ├── CustomSelect.tsx
+│   │   │   │   │   ├── Layout.tsx
+│   │   │   │   │   └── Modal.tsx
+│   │   │   │   ├── context
+│   │   │   │   │   ├── StoreContext.tsx
+│   │   │   │   │   ├── dummyDataGenerator.ts
+│   │   │   │   │   └── supabase.ts
+│   │   │   │   ├── index.css
+│   │   │   │   ├── main.tsx
+│   │   │   │   └── pages
+│   │   │   │       ├── FinanceReportsPage.tsx
+│   │   │   │       ├── FinishedProductPage.tsx
+│   │   │   │       ├── GreenCoffeePage.tsx
+│   │   │   │       ├── LoginPage.tsx
+│   │   │   │       ├── OrdersPage.tsx
+│   │   │   │       ├── OverviewPage.tsx
+│   │   │   │       ├── PackagingPage.tsx
+│   │   │   │       ├── PaymentsPage.tsx
+│   │   │   │       ├── ProductionPage.tsx
+│   │   │   │       ├── PurchasesPage.tsx
+│   │   │   │       ├── RoastingPage.tsx
+│   │   │   │       └── Settings.tsx
+│   │   │   ├── tailwind.config.js
+│   │   │   ├── tsconfig.app.json
+│   │   │   ├── tsconfig.json
+│   │   │   ├── tsconfig.node.json
+│   │   │   └── vite.config.ts
+│   │   └── stokdemo
 │   │       ├── README.md
-│   │       ├── editionroastery-tree.txt
 │   │       ├── eslint.config.js
 │   │       ├── index.html
 │   │       ├── package-lock.json
 │   │       ├── package.json
 │   │       ├── postcss.config.js
 │   │       ├── public
-│   │       │   └── ForgeOpsLogo.jpg
+│   │       │   └── OpsironLogo.png
 │   │       ├── src
 │   │       │   ├── App.css
 │   │       │   ├── App.tsx
@@ -62,28 +102,20 @@ opsiron-monorepo
 │   │       │   │   ├── Layout.tsx
 │   │       │   │   └── Modal.tsx
 │   │       │   ├── context
-│   │       │   │   ├── StoreContext.tsx
-│   │       │   │   └── dummyDataGenerator.ts
+│   │       │   │   └── InventoryContext.tsx
+│   │       │   ├── data
+│   │       │   │   └── dummyData.ts
 │   │       │   ├── index.css
-│   │       │   ├── main.tsx
+│   │       │   ├── main.jsx
 │   │       │   └── pages
-│   │       │       ├── FinanceReportsPage.tsx
-│   │       │       ├── FinishedProductPage.tsx
-│   │       │       ├── GreenCoffeePage.tsx
-│   │       │       ├── LoginPage.tsx
-│   │       │       ├── OrdersPage.tsx
-│   │       │       ├── OverviewPage.tsx
-│   │       │       ├── PackagingPage.tsx
-│   │       │       ├── PaymentsPage.tsx
+│   │       │       ├── FinishedGoodsPage.tsx
+│   │       │       ├── MaterialsPage.tsx
 │   │       │       ├── ProductionPage.tsx
-│   │       │       ├── PurchasesPage.tsx
-│   │       │       ├── RoastingPage.tsx
-│   │       │       └── Settings.tsx
+│   │       │       ├── SemiFinishedPage.tsx
+│   │       │       ├── SettingsPage.tsx
+│   │       │       └── StockDashboard.tsx
 │   │       ├── tailwind.config.js
-│   │       ├── tsconfig.app.json
-│   │       ├── tsconfig.json
-│   │       ├── tsconfig.node.json
-│   │       └── vite.config.ts
+│   │       └── vite.config.js
 │   └── opsiron-web
 │       ├── README.md
 │       ├── eslint.config.js
@@ -141,40 +173,40 @@ opsiron-monorepo
 │   ├── OpsironLogo-v2.png
 │   ├── OpsironLogo.png
 │   ├── assets
-│   │   ├── About-BZODZOZM.js
-│   │   ├── Card-DVevhkEI.js
-│   │   ├── Contact-E1NfOuu0.js
-│   │   ├── CraftOps-DyQPJDPf.js
-│   │   ├── Home-KLSob11U.js
-│   │   ├── KVKK-CkyH7Mic.js
-│   │   ├── NotFound-4uS6fO_f.js
-│   │   ├── Pricing-DLn9Z0Y3.js
-│   │   ├── Privacy-sEQSk0ut.js
-│   │   ├── ServeOps-6avGJg32.js
-│   │   ├── Terms-vdpvT7s9.js
-│   │   ├── arrow-right-CUCnlxgR.js
-│   │   ├── check-3TzZUo39.js
-│   │   ├── circle-alert-BLsFrquX.js
-│   │   ├── clock-BlfurOO4.js
-│   │   ├── index-Ct1mdqkG.js
-│   │   ├── index-DBvRyuVh.css
+│   │   ├── About-CycYQrLF.js
+│   │   ├── Card-C-LXXFRM.js
+│   │   ├── Contact-DmSyHe8_.js
+│   │   ├── CraftOps-DkfP_VBu.js
+│   │   ├── Home-CJb0zjuw.js
+│   │   ├── KVKK-DDJ4Utf2.js
+│   │   ├── NotFound-DVhTk915.js
+│   │   ├── Pricing-DJmG7xq1.js
+│   │   ├── Privacy-CsdfyIs2.js
+│   │   ├── ServeOps-DaMf1qoY.js
+│   │   ├── Terms-2N003NqJ.js
+│   │   ├── arrow-right-By9aL7K8.js
+│   │   ├── check-DKZdlP34.js
+│   │   ├── circle-alert-CfDUNGIu.js
+│   │   ├── clock-LRr05ryO.js
+│   │   ├── index-OaG4d1wp.js
+│   │   ├── index-x9QLVIeC.css
 │   │   ├── opsiron-CXJpZ2_G.png
-│   │   ├── package-CHZJ2AqM.js
-│   │   ├── shield-check-Eb5mTSDa.js
-│   │   ├── trending-up-A5rlQ2MH.js
-│   │   └── validation-RI7igykx.js
+│   │   ├── package-UTnIuIo6.js
+│   │   ├── shield-check-CKxOZkny.js
+│   │   ├── trending-up-95c2vuRd.js
+│   │   └── validation--holevPD.js
 │   ├── craftops
 │   │   ├── aycaninsaat
 │   │   │   ├── assets
-│   │   │   │   ├── index-CN1-vyhD.js
-│   │   │   │   └── index-CWukfpEm.css
+│   │   │   │   ├── index-BJOxO-_v.js
+│   │   │   │   └── index-WkRYh2jH.css
 │   │   │   ├── index.html
 │   │   │   └── vite.svg
 │   │   └── editioncoffeeroastery
 │   │       ├── ForgeOpsLogo.jpg
 │   │       ├── assets
-│   │       │   ├── index-C17XloxR.css
-│   │       │   └── index-CDW60ki8.js
+│   │       │   ├── index-ChVSRNMA.js
+│   │       │   └── index-DMpbyScS.css
 │   │       └── index.html
 │   ├── index.html
 │   └── opsiron.png
