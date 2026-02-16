@@ -1,9 +1,18 @@
-import { useMemo, useState, useEffect } from "react";
-import { ArrowRightLeft, Calendar, CreditCard, User, FileText, Check, X, AlertTriangle, Save, RefreshCw, Building2 } from "lucide-react";
+import { useMemo, useState, useRef, useEffect } from "react";
+import { ArrowRightLeft, Calendar, CreditCard, User, FileText, Check, X, AlertTriangle, Save, RefreshCw, Building2, CheckCircle, Info } from "lucide-react";
 import { CustomSelect } from "../components/CustomSelect";
 import { useData, type Islem } from "../context/DataContext";
 
 // --- YARDIMCI FONKSİYONLAR ---
+
+// GÜVENLİK FIX: Telefondan (HTTP) girildiğinde crypto.randomUUID() çalışmaz.
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 const toAmount = (val: any) =>
   parseFloat(String(val).replace(/\./g, "").replace(",", ".")) || 0;
 
@@ -41,7 +50,7 @@ const INITIAL_FORM = {
   tip: "",
   tutar: "",
   kisi_id: "",
-  proje_id: "", // Form'a eklendi
+  proje_id: "",
   aciklama: "",
   is_bitiminde: false,
   doviz: "TRY",
@@ -53,16 +62,41 @@ export default function IslemlerDemo() {
   const [form, setForm] = useState<any>(INITIAL_FORM);
   const [editForm, setEditForm] = useState<any>(null);
   const [query, setQuery] = useState("");
+  
+  // Modallar için State'ler
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [checkModal, setCheckModal] = useState<{ item: Islem; newStatus: number; message: string } | null>(null);
 
-  // Sayfa yüklendiğinde varsayılan projeyi seç (Aycan Prime Suites)
+  // Autocomplete (Öneri) State'leri
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestionRef = useRef<HTMLDivElement>(null);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("İşlem başarıyla tamamlandı.");
+
+  // Dışarı tıklandığında öneri listesini kapat
   useEffect(() => {
-    if (projeler.length > 0 && !form.proje_id) {
-       // İsimle bulmaya çalış, bulamazsa ilkini seç
-       const defaultProject = projeler.find(p => p.ad.includes("Aycan")) || projeler[0];
-       setForm((prev: any) => ({ ...prev, proje_id: defaultProject.id }));
+    function handleClickOutside(event: MouseEvent) {
+      if (suggestionRef.current && !suggestionRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
     }
-  }, [projeler]);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Tüm benzersiz açıklamaları hafızaya al
+  const uniqueDescriptions = useMemo(() => {
+    const allDescs = islemler
+      .map(i => i.aciklama)
+      // FIX: Burada "Type Predicate" kullanarak TypeScript'e null olmadığını garanti ediyoruz.
+      .filter((desc): desc is string => typeof desc === 'string' && desc.trim().length > 0);
+      
+    // Set ile mükerrer kayıtları temizle ve diziye çevir
+    return Array.from(new Set(allDescs));
+  }, [islemler]);
 
   const getExchangeRate = (currency: string) => {
     if (currency === "USD") return 34.50;
@@ -71,36 +105,85 @@ export default function IslemlerDemo() {
     return 1;
   };
 
+  // --- AÇIKLAMA DEĞİŞİKLİĞİ VE ÖNERİ FİLTRELEME ---
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setForm({ ...form, aciklama: val });
+
+    // 3 karakter ve üzeri ise öneri yap
+    if (val.length >= 3) {
+      const lowerVal = val.toLocaleLowerCase('tr-TR');
+      
+      // uniqueDescriptions artık kesinlikle string[] olduğu için hata vermez
+      const matches = uniqueDescriptions.filter(desc => 
+        desc.toLocaleLowerCase('tr-TR').startsWith(lowerVal)
+      );
+      
+      if (matches.length > 0) {
+        setSuggestions(matches.slice(0, 5)); // En fazla 5 öneri göster
+        setShowSuggestions(true);
+      } else {
+        setShowSuggestions(false);
+      }
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  // Öneri seçildiğinde
+  const handleSuggestionClick = (desc: string) => {
+    setForm({ ...form, aciklama: desc });
+    setShowSuggestions(false);
+  };
+
   // --- KAYIT EKLEME ---
   const saveCreate = async () => {
     try {
       if (!form.kisi_id || !form.tip || !form.tutar) return alert("Eksik bilgi: Kişi, Tip ve Tutar zorunludur.");
-      if (!form.proje_id) return alert("Lütfen şantiye seçiniz."); // Kontrol
+      if (!form.proje_id) return alert("Lütfen şantiye seçiniz.");
+
+      setIsSubmitting(true);
 
       const amountRaw = toAmount(form.tutar);
       const amountTL = amountRaw * getExchangeRate(form.doviz);
 
-      if (form.tip === "cek" && !form.tarih) return alert("Çek işlemlerinde Vade Tarihi zorunludur.");
+      if (form.tip === "cek" && !form.tarih) {
+        setIsSubmitting(false);
+        return alert("Çek işlemlerinde Vade Tarihi zorunludur.");
+      }
 
       const newRow: Islem = {
-        id: crypto.randomUUID(), 
+        id: generateUUID(),
         tarih: form.is_bitiminde && form.tip !== 'cek' ? null : form.tarih,
         tutar: amountTL,
         tutar_raw: amountRaw,
         tip: form.tip,
         is_bitiminde: form.tip === 'cek' ? 0 : (form.is_bitiminde ? 1 : 0),
         kisi_id: form.kisi_id,
-        proje_id: form.proje_id, // Eklendi
+        proje_id: form.proje_id,
         aciklama: form.aciklama,
         doviz: form.doviz as any,
       };
 
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       await addIslem(newRow);
-      // Formu sıfırla ama projeyi koru
-      setForm({ ...INITIAL_FORM, proje_id: form.proje_id });
+      
+      setForm({ ...INITIAL_FORM }); 
+      setSuggestions([]); // Önerileri temizle
+      setShowSuggestions(false);
+      
+      setSuccessMessage("Yeni işlem başarıyla eklendi.");
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+      }, 3000);
+
     } catch (error) {
       console.error("Kayıt hatası:", error);
       alert("İşlem kaydedilirken bir hata oluştu.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -111,7 +194,7 @@ export default function IslemlerDemo() {
       tarih: r.tarih || "",
       tutar: formatTR(r.tutar_raw),
       is_bitiminde: r.is_bitiminde === 1,
-      proje_id: r.proje_id || (projeler.length > 0 ? projeler[0].id : "") // Eski kayıtlarda null olabilir
+      proje_id: r.proje_id || "" 
     });
   };
 
@@ -119,6 +202,7 @@ export default function IslemlerDemo() {
     try {
       if (!editForm) return;
       if (!editForm.kisi_id || !editForm.tip || !editForm.tutar) return alert("Eksik bilgi");
+      if (!editForm.proje_id) return alert("Lütfen şantiye seçiniz.");
 
       const amountRaw = toAmount(editForm.tutar);
       const amountTL = amountRaw * getExchangeRate(editForm.doviz);
@@ -129,21 +213,29 @@ export default function IslemlerDemo() {
         tutar: amountTL,
         tutar_raw: amountRaw,
         tip: editForm.tip,
-        is_bitiminde: editForm.tip === 'cek' ? editForm.is_bitiminde : (editForm.is_bitiminde ? 1 : 0),
+        is_bitiminde: editForm.is_bitiminde ? 1 : 0, 
         kisi_id: editForm.kisi_id,
-        proje_id: editForm.proje_id, // Eklendi
+        proje_id: editForm.proje_id, 
         aciklama: editForm.aciklama,
         doviz: editForm.doviz,
       };
 
       await updateIslem(updatedRow);
       setEditForm(null);
+
+      setSuccessMessage("Kayıt başarıyla güncellendi.");
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+      }, 3000);
+
     } catch (error) {
       console.error("Güncelleme hatası:", error);
-      alert("Güncelleme sırasında hata oluştu.");
+      alert("Güncelleme sırasında hata oluştu: " + (error instanceof Error ? error.message : "Bilinmeyen hata"));
     }
   };
 
+  // --- SİLME İŞLEMİ ---
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
@@ -155,30 +247,59 @@ export default function IslemlerDemo() {
     }
   };
 
-  const toggleCheckStatus = async (r: Islem) => {
+  // --- ÇEK DURUMU DEĞİŞTİRME BAŞLANGIÇ (MODAL AÇAR) ---
+  const toggleCheckStatus = (r: Islem) => {
     const newStatus = r.is_bitiminde === 1 ? 0 : 1;
-    const confirmMsg = newStatus === 1 
+    const message = newStatus === 1 
       ? "Bu çeki ÖDENDİ olarak işaretlemek istiyor musunuz? (Kasadan para çıkışı yapılacak)"
       : "Bu çeki BEKLİYOR durumuna almak istiyor musunuz?";
       
-    if (confirm(confirmMsg)) {
-      try {
-        await updateIslem({ ...r, is_bitiminde: newStatus });
-      } catch (error) {
-        console.error("Çek durumu güncelleme hatası:", error);
-      }
+    setCheckModal({
+      item: r,
+      newStatus,
+      message
+    });
+  };
+
+  // --- ÇEK DURUMU ONAYLA (İŞLEMİ YAPAR) ---
+  const confirmCheckToggle = async () => {
+    if (!checkModal) return;
+    try {
+      await updateIslem({ ...checkModal.item, is_bitiminde: checkModal.newStatus });
+      setCheckModal(null);
+      setSuccessMessage("Çek durumu güncellendi.");
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (error) {
+      console.error("Çek durumu güncelleme hatası:", error);
+      alert("İşlem sırasında hata oluştu.");
     }
   };
 
-  const filtered = useMemo(
-    () =>
-      islemler
-        .filter((r) =>
-          JSON.stringify(r).toLowerCase().includes(query.toLowerCase())
-        )
-        .sort((a, b) => (b.tarih || "").localeCompare(a.tarih || "")),
-    [islemler, query]
-  );
+  const filtered = useMemo(() => {
+    const lowerQuery = query.toLocaleLowerCase('tr-TR');
+    
+    return islemler
+      .filter((r) => {
+        if (!query) return true;
+
+        const kisi = kisiler.find(k => k.id === r.kisi_id);
+        const proje = projeler.find(p => p.id === r.proje_id);
+        
+        const kisiAdi = kisi ? kisi.ad.toLocaleLowerCase('tr-TR') : "";
+        const projeAdi = proje ? proje.ad.toLocaleLowerCase('tr-TR') : "";
+        const aciklama = (r.aciklama || "").toLocaleLowerCase('tr-TR');
+        const tip = (r.tip || "").toLocaleLowerCase('tr-TR');
+    
+        return (
+          kisiAdi.includes(lowerQuery) ||
+          projeAdi.includes(lowerQuery) ||
+          aciklama.includes(lowerQuery) ||
+          tip.includes(lowerQuery)
+        );
+      })
+      .sort((a, b) => (b.tarih || "").localeCompare(a.tarih || ""));
+  }, [islemler, kisiler, projeler, query]);
 
   const kisiOptions = useMemo(
     () => 
@@ -205,7 +326,7 @@ export default function IslemlerDemo() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 pb-20">
+    <div className="min-h-screen bg-neutral-50 pb-20 relative">
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between">
@@ -231,7 +352,6 @@ export default function IslemlerDemo() {
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             
-             {/* ŞANTİYE SEÇİMİ (YENİ) */}
              <div className="md:col-span-12 w-full">
                 <CustomSelect 
                     label="ŞANTİYE / PROJE" 
@@ -301,19 +421,49 @@ export default function IslemlerDemo() {
               <CustomSelect label="KİŞİ" value={form.kisi_id} onChange={(val) => setForm({ ...form, kisi_id: val })} options={kisiOptions} placeholder="Seçiniz" icon={User} />
             </div>
 
-            <div className="md:col-span-9">
+            <div className="md:col-span-9 relative" ref={suggestionRef}>
               <label className="block text-xs font-medium text-neutral-500 mb-3 tracking-wider">AÇIKLAMA</label>
-              <input
-                className="w-full h-14 px-4 bg-white border border-neutral-300 text-neutral-900 outline-none focus:border-neutral-900 font-light placeholder:text-neutral-300 transition-colors"
-                value={form.aciklama}
-                onChange={(e) => setForm({ ...form, aciklama: e.target.value })}
-                placeholder="Opsiyonel açıklama..."
-              />
+              <div className="relative">
+                <input
+                  className="w-full h-14 px-4 bg-white border border-neutral-300 text-neutral-900 outline-none focus:border-neutral-900 font-light placeholder:text-neutral-300 transition-colors"
+                  value={form.aciklama}
+                  onChange={handleDescriptionChange}
+                  onFocus={() => { if(form.aciklama.length >= 3 && suggestions.length > 0) setShowSuggestions(true) }}
+                  placeholder="Opsiyonel açıklama..."
+                />
+                {/* AUTOCOMPLETE DROPDOWN */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute z-10 w-full bg-white border border-neutral-200 shadow-lg mt-1 max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+                    <ul className="py-1">
+                      {suggestions.map((desc, index) => (
+                        <li 
+                          key={index}
+                          onClick={() => handleSuggestionClick(desc)}
+                          className="px-4 py-3 text-sm font-light text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900 cursor-pointer transition-colors border-b border-neutral-50 last:border-0"
+                        >
+                          {desc}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="md:col-span-3 flex items-end">
-              <button onClick={saveCreate} className="w-full h-14 bg-neutral-900 text-white font-light tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.99] flex items-center justify-center gap-2">
-                EKLE
+              <button 
+                onClick={saveCreate} 
+                disabled={isSubmitting}
+                className={`w-full h-14 bg-neutral-900 text-white font-light tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.99] flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+              >
+                 {isSubmitting ? (
+                    <>
+                        <RefreshCw size={20} className="animate-spin" />
+                        KAYDEDİLİYOR...
+                    </>
+                ) : (
+                    "EKLE"
+                )}
               </button>
             </div>
           </div>
@@ -322,7 +472,7 @@ export default function IslemlerDemo() {
         <div className="bg-white border border-neutral-200 shadow-sm">
             <div className="p-4 border-b border-neutral-100 flex justify-end">
                 <input
-                  placeholder="Listede ara..."
+                  placeholder="Ara: Kişi, Proje ..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   className="p-2 text-sm border-b border-neutral-300 outline-none focus:border-neutral-900 bg-transparent w-64 font-light text-right transition-colors"
@@ -413,7 +563,6 @@ export default function IslemlerDemo() {
              <div className="p-8">
                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                  
-                 {/* EDIT: ŞANTİYE */}
                  <div className="md:col-span-12 w-full">
                     <CustomSelect label="ŞANTİYE" value={editForm.proje_id} onChange={(val) => setEditForm({...editForm, proje_id: val})} options={projeOptions} placeholder="Seç" icon={Building2} />
                  </div>
@@ -462,6 +611,7 @@ export default function IslemlerDemo() {
         </div>
       )}
 
+      {/* SİLME MODALI */}
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
            <div className="bg-white border border-neutral-200 shadow-2xl w-full max-w-md p-0 overflow-hidden">
@@ -471,10 +621,47 @@ export default function IslemlerDemo() {
                 <h2 className="text-lg font-light text-neutral-400 tracking-tight">Bu işlem geri alınamaz.</h2>
              </div>
              <div className="flex p-4 gap-4">
-               <button onClick={() => setDeleteId(null)} className="flex-1 py-3 bg-white border border-neutral-300">VAZGEÇ</button>
-               <button onClick={handleDelete} className="flex-1 py-3 bg-red-600 text-white hover:bg-red-700">SİL</button>
+               <button onClick={() => setDeleteId(null)} className="flex-1 py-3 bg-white border border-neutral-300 transition-colors hover:bg-neutral-50">VAZGEÇ</button>
+               <button onClick={handleDelete} className="flex-1 py-3 bg-red-600 text-white hover:bg-red-700 transition-colors">SİL</button>
              </div>
            </div>
+        </div>
+      )}
+
+      {/* YENİ: ÇEK DURUM DEĞİŞTİRME MODALI */}
+      {checkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+           <div className="bg-white border border-neutral-200 shadow-2xl w-full max-w-md p-0 overflow-hidden">
+             <div className="bg-neutral-50 p-6 border-b border-neutral-100 text-center">
+                {/* İkon rengi mavi/nötr tonlarında */}
+                <div className="mx-auto w-12 h-12 bg-sky-50 rounded-full flex items-center justify-center mb-4">
+                  <RefreshCw className="text-sky-600" size={24} />
+                </div>
+                <h3 className="text-lg font-light text-neutral-900 tracking-tight">DURUM DEĞİŞİKLİĞİ</h3>
+                <h2 className="text-sm font-light text-neutral-500 tracking-tight mt-2 px-4">{checkModal.message}</h2>
+             </div>
+             <div className="flex p-4 gap-4">
+               <button onClick={() => setCheckModal(null)} className="flex-1 py-3 bg-white border border-neutral-300 transition-colors hover:bg-neutral-50">VAZGEÇ</button>
+               {/* Buton rengi ana tema rengi */}
+               <button onClick={confirmCheckToggle} className="flex-1 py-3 bg-neutral-900 text-white hover:bg-neutral-800 transition-colors">ONAYLA</button>
+             </div>
+           </div>
+        </div>
+      )}
+
+      {/* DİNAMİK BİLDİRİM (TOAST) */}
+      {showSuccess && (
+        <div className="fixed bottom-6 right-6 z-[60] bg-neutral-900 text-white px-6 py-4 rounded shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center">
+             <CheckCircle className="text-green-400" size={20} />
+          </div>
+          <div>
+            <h4 className="text-sm font-medium tracking-wide">BAŞARILI</h4>
+            <p className="text-xs text-neutral-400 font-light">{successMessage}</p>
+          </div>
+          <button onClick={() => setShowSuccess(false)} className="ml-2 text-neutral-500 hover:text-white transition-colors">
+            <X size={16} />
+          </button>
         </div>
       )}
     </div>

@@ -2,13 +2,8 @@ import { useState, useRef } from 'react';
 import { 
   Settings, 
   Building, 
-  Save, 
   Download, 
-  RefreshCw, 
-  Globe, 
-  Moon,
-  CheckCircle2,
-  Upload,
+  Upload, 
   Server,
   Plus,
   Trash2,
@@ -24,18 +19,13 @@ export default function SettingsPage() {
     kisiler, 
     islemler, 
     projeler, 
-    restoreData, // loadBackup yerine restoreData kullanıyoruz
+    restoreData, 
     addProje,
     updateProje,
     removeProje,
-    loading // Yükleme durumunu göstermek için
+    loading 
   } = useData();
   
-  const [companyName, setCompanyName] = useState("Aycan İnşaat");
-  const [footerText, setFooterText] = useState("Powered by CraftOps");
-  const [currency, setCurrency] = useState("TRY");
-  const [isSaved, setIsSaved] = useState(false);
-
   // -- PROJE YÖNETİMİ STATE --
   const [newProjeAd, setNewProjeAd] = useState("");
   const [editingProjeId, setEditingProjeId] = useState<string | null>(null);
@@ -97,19 +87,7 @@ export default function SettingsPage() {
       }
     };
     reader.readAsText(file);
-    // Aynı dosyayı tekrar seçebilmek için input'u sıfırla
     event.target.value = "";
-  };
-
-  const handleSave = () => {
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2000);
-  };
-
-  const handleReset = () => {
-    if(window.confirm("Sayfa yenilenecek. Emin misiniz?")) {
-        window.location.reload();
-    }
   };
 
   // --- PROJE FONKSİYONLARI ---
@@ -171,10 +149,9 @@ export default function SettingsPage() {
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* --- SOL KOLON --- */}
+          {/* --- SOL KOLON: ŞANTİYE YÖNETİMİ --- */}
           <div className="lg:col-span-2 space-y-8">
             
-            {/* 1. ŞANTİYE YÖNETİMİ */}
             <div className="bg-white border border-neutral-200 p-8">
                 <div className="flex items-center gap-3 mb-6 border-b border-neutral-100 pb-4">
                     <Building className="text-neutral-400" size={20} />
@@ -253,88 +230,6 @@ export default function SettingsPage() {
                 </div>
             </div>
 
-            {/* 2. FİRMA BİLGİLERİ KARTI */}
-            <div className="bg-white border border-neutral-200 p-8 relative overflow-hidden">
-               <div className="flex items-center gap-3 mb-6 border-b border-neutral-100 pb-4">
-                  <Building className="text-neutral-400" size={20} />
-                  <h2 className="text-lg font-light text-neutral-900 tracking-tight">FİRMA PROFİLİ</h2>
-               </div>
-
-               <div className="space-y-6">
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-500 mb-2 tracking-wider">FİRMA ADI / BAŞLIK</label>
-                    <input 
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                      className="w-full p-4 bg-neutral-50 border border-neutral-200 text-neutral-900 outline-none focus:border-neutral-900 font-light transition-colors"
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="block text-xs font-medium text-neutral-500 mb-2 tracking-wider">PARA BİRİMİ</label>
-                        <select 
-                          value={currency}
-                          onChange={(e) => setCurrency(e.target.value)}
-                          className="w-full p-4 bg-neutral-50 border border-neutral-200 text-neutral-900 outline-none focus:border-neutral-900 font-light appearance-none"
-                        >
-                            <option value="TRY">Türk Lirası (₺)</option>
-                            <option value="USD">Amerikan Doları ($)</option>
-                            <option value="EUR">Euro (€)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-medium text-neutral-500 mb-2 tracking-wider">ALT BİLGİ METNİ</label>
-                        <input 
-                          value={footerText}
-                          onChange={(e) => setFooterText(e.target.value)}
-                          className="w-full p-4 bg-neutral-50 border border-neutral-200 text-neutral-900 outline-none focus:border-neutral-900 font-light transition-colors"
-                        />
-                    </div>
-                  </div>
-               </div>
-
-               <div className="mt-8 pt-6 border-t border-neutral-100 flex justify-end">
-                  <button 
-                    onClick={handleSave}
-                    className={`
-                        px-8 py-3 flex items-center gap-2 transition-all duration-300
-                        ${isSaved ? 'bg-green-600 text-white' : 'bg-neutral-900 text-white hover:bg-neutral-800'}
-                    `}
-                  >
-                    {isSaved ? <CheckCircle2 size={18} /> : <Save size={18} />}
-                    <span className="font-light tracking-widest text-sm">
-                        {isSaved ? 'KAYDEDİLDİ' : 'KAYDET'}
-                    </span>
-                  </button>
-               </div>
-            </div>
-            
-             {/* 3. UYGULAMA TERCİHLERİ */}
-             <div className="bg-white border border-neutral-200 p-8">
-               <div className="flex items-center gap-3 mb-6 border-b border-neutral-100 pb-4">
-                  <Globe className="text-neutral-400" size={20} />
-                  <h2 className="text-lg font-light text-neutral-900 tracking-tight">UYGULAMA TERCİHLERİ</h2>
-               </div>
-               <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-neutral-50 border border-neutral-100">
-                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-white rounded-full border border-neutral-200 text-neutral-500">
-                            <Moon size={16} />
-                        </div>
-                        <div>
-                            <div className="text-sm font-medium text-neutral-900">Karanlık Mod</div>
-                            <div className="text-xs text-neutral-500">Arayüzü koyu renklere çevirir.</div>
-                        </div>
-                     </div>
-                     <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-                        <input type="checkbox" name="toggle" id="toggle" className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-neutral-300"/>
-                        <label htmlFor="toggle" className="toggle-label block overflow-hidden h-6 rounded-full bg-neutral-300 cursor-pointer"></label>
-                     </div>
-                  </div>
-               </div>
-            </div>
-
           </div>
 
           {/* --- SAĞ KOLON: VERİ YÖNETİMİ --- */}
@@ -406,15 +301,6 @@ export default function SettingsPage() {
                        <span className="font-light text-sm">YEDEKTEN DÖN (RESTORE)</span>
                      </>
                    )}
-                </button>
-
-                <button 
-                  onClick={handleReset}
-                  disabled={loading}
-                  className="w-full py-4 px-4 bg-white border border-red-100 text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-2 group disabled:opacity-50"
-                >
-                    <RefreshCw size={18} className="text-red-400 group-hover:text-red-600 transition-colors" />
-                    <span className="font-light text-sm">SAYFAYI YENİLE</span>
                 </button>
                 
                 <p className="text-[10px] text-neutral-400 text-center pt-2">

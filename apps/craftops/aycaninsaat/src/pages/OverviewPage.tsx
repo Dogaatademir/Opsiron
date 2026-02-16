@@ -7,11 +7,11 @@ import {
   ArrowRight, 
   Calendar,
   AlertTriangle,
-  Building2 // Şantiye ikonu eklendi
+  Building2 
 } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { Link } from "react-router-dom";
-import { CustomSelect } from "../components/CustomSelect"; // CustomSelect import edildi
+import { CustomSelect } from "../components/CustomSelect";
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("tr-TR", {
@@ -28,7 +28,6 @@ export default function OverviewPage() {
 
   // --- SEÇENEKLERİ HAZIRLA (CustomSelect İçin) ---
   const projeOptions = useMemo(() => {
-    // En başa "Tümü" seçeneğini ekliyoruz, altına projeleri diziyoruz
     return [
       { value: "all", label: "TÜM ŞANTİYELER (TOPLAM)" },
       ...projeler.map((p) => ({ value: p.id, label: p.ad }))
@@ -36,7 +35,6 @@ export default function OverviewPage() {
   }, [projeler]);
 
   // --- FILTRELEME ---
-  // Tüm hesaplamalar bu filtrelenmiş listeye göre yapılır
   const filteredIslemler = useMemo(() => {
     if (selectedProjeId === "all") return islemler;
     return islemler.filter(i => i.proje_id === selectedProjeId);
@@ -52,7 +50,7 @@ export default function OverviewPage() {
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
 
-    // 1. GENEL KASA DURUMU
+    // 1. GENEL KASA DURUMU (Nakit Akışı)
     const tahsilat = filteredIslemler
       .filter((i) => i.tip === "tahsilat")
       .reduce((acc, curr) => acc + curr.tutar, 0);
@@ -63,15 +61,21 @@ export default function OverviewPage() {
 
     const netDurum = tahsilat - odeme;
 
-    // 2. CARİ HESAPLAR
+    // --- YENİ EKLENEN KISIM: ÖDENMEMİŞ ÇEKLER TOPLAMI ---
+    // Şirketin yazdığı ama henüz bankadan çıkmamış çekler (Gelecek Yükümlülük)
+    const odenmemisCeklerTotal = filteredIslemler
+      .filter(i => i.tip === "cek" && i.is_bitiminde === 0)
+      .reduce((acc, curr) => acc + curr.tutar, 0);
+
+    // 2. CARİ HESAPLAR (AÇIK HESAP BORÇ/ALACAK)
     let totalKalanBorc = 0;
     let totalKalanAlacak = 0;
 
     kisiler.forEach((kisi) => {
-      // Kişinin sadece seçili projedeki işlemlerine bakılır
       const kisiIslemleri = filteredIslemler.filter((t) => t.kisi_id === kisi.id);
 
       const topOdenecek = kisiIslemleri.filter((t) => t.tip === "odenecek").reduce((sum, t) => sum + t.tutar, 0);
+      // Not: Çek verildiğinde cari borç düşer, ama toplam borç yükümlülüğüne (yukarıdaki çek toplamına) geçer.
       const topOdeme = kisiIslemleri.filter((t) => t.tip === "odeme" || t.tip === "cek").reduce((sum, t) => sum + t.tutar, 0);
       
       const topAlacak = kisiIslemleri.filter((t) => t.tip === "alacak").reduce((sum, t) => sum + t.tutar, 0);
@@ -81,7 +85,7 @@ export default function OverviewPage() {
       totalKalanAlacak += Math.max(0, topAlacak - topTahsilat);
     });
 
-    // 3. YAKLAŞAN VADELER
+    // 3. YAKLAŞAN VADELER (10 GÜN)
     const yaklasanIslemler = filteredIslemler.filter(i => {
       if (!i.tarih) return false;
       const islemTarihi = new Date(i.tarih);
@@ -89,7 +93,7 @@ export default function OverviewPage() {
     });
 
     const yaklasanBorc = yaklasanIslemler
-      .filter(i => i.tip === "odenecek")
+      .filter(i => i.tip === "odenecek" || (i.tip === "cek" && i.is_bitiminde === 0))
       .reduce((acc, curr) => ({ count: acc.count + 1, total: acc.total + curr.tutar }), { count: 0, total: 0 });
     
     const yaklasanAlacak = yaklasanIslemler
@@ -115,7 +119,8 @@ export default function OverviewPage() {
       tahsilat, 
       odeme, 
       netDurum, 
-      odenecek: totalKalanBorc, 
+      // TOPLAM YÜKÜMLÜLÜK: Cari Borçlar + Ödenmemiş Çekler
+      odenecek: totalKalanBorc + odenmemisCeklerTotal, 
       alacak: totalKalanAlacak,
       yaklasan: { borc: yaklasanBorc, alacak: yaklasanAlacak },
       buAy: { tahsilat: buAyTahsilat, odeme: buAyOdeme, net: buAyTahsilat - buAyOdeme }
@@ -143,7 +148,7 @@ export default function OverviewPage() {
             </p>
           </div>
 
-          {/* ŞANTİYE FİLTRESİ (CustomSelect Kullanımı) */}
+          {/* ŞANTİYE FİLTRESİ */}
           <div className="w-full md:w-80">
              <CustomSelect 
                 label="GÖRÜNÜM / ŞANTİYE"
@@ -209,7 +214,7 @@ export default function OverviewPage() {
           <div className="bg-white p-6 border border-neutral-200 shadow-sm flex flex-col justify-between relative overflow-hidden">
             <div className="absolute top-0 right-0 w-1 h-full bg-red-500"></div>
             <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-bold text-neutral-400 tracking-wider uppercase">ÖDENECEK (NET)</span>
+              <span className="text-xs font-bold text-neutral-400 tracking-wider uppercase">TOPLAM YÜKÜMLÜLÜK</span>
               <div className="p-2 rounded-full bg-red-50 text-red-600">
                 <AlertCircle size={20} />
               </div>
@@ -218,7 +223,7 @@ export default function OverviewPage() {
               <div className="text-2xl font-light text-neutral-900">
                 {formatCurrency(stats.odenecek)}
               </div>
-              <p className="text-xs text-neutral-400 mt-2 font-light">Kalan net borç bakiyesi</p>
+              <p className="text-xs text-neutral-400 mt-2 font-light">Cari Borçlar + Ödenmemiş Çekler</p>
             </div>
           </div>
         </div>
@@ -239,6 +244,7 @@ export default function OverviewPage() {
                 <thead className="bg-neutral-50 text-xs text-neutral-500 font-medium">
                   <tr>
                     <th className="px-6 py-3 tracking-wider">TARİH</th>
+                    <th className="px-6 py-3 tracking-wider text-center">ŞANTİYE</th>
                     <th className="px-6 py-3 tracking-wider">AÇIKLAMA</th>
                     <th className="px-6 py-3 tracking-wider text-right">TUTAR</th>
                   </tr>
@@ -257,7 +263,9 @@ export default function OverviewPage() {
                         ) : (
                           islem.tarih ? islem.tarih.split('-').reverse().join('.') : (islem.is_bitiminde ? 'İŞ BİTİMİ' : '-')
                         )}
-                        <div className="text-[9px] font-bold text-neutral-400 uppercase mt-1">
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="text-[10px] font-bold text-neutral-400 uppercase">
                             {projeler.find(p => p.id === islem.proje_id)?.ad || "—"}
                         </div>
                       </td>
@@ -280,7 +288,7 @@ export default function OverviewPage() {
                     </tr>
                   ))}
                   {sonIslemler.length === 0 && (
-                    <tr><td colSpan={3} className="p-6 text-center text-neutral-400 text-sm">Henüz işlem yok.</td></tr>
+                    <tr><td colSpan={4} className="p-6 text-center text-neutral-400 text-sm">Henüz işlem yok.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -297,7 +305,7 @@ export default function OverviewPage() {
                </div>
                <div className="p-6 space-y-4">
                   <div className="flex justify-between items-center pb-3 border-b border-neutral-100">
-                     <span className="text-sm text-neutral-600">Ödenecekler</span>
+                     <span className="text-sm text-neutral-600">Ödenecekler <br/><span className="text-[10px] text-neutral-400">(Borçlar + Çekler)</span></span>
                      <div className="text-right">
                         <div className="text-sm font-semibold text-red-600">{formatCurrency(stats.yaklasan.borc.total)}</div>
                         <div className="text-[10px] text-neutral-400">{stats.yaklasan.borc.count} adet işlem</div>

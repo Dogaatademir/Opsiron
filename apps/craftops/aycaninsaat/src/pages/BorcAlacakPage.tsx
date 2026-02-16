@@ -4,8 +4,8 @@ import {
   TrendingUp, 
   CheckCircle2,
   CalendarClock,
-  Wallet 
-} from "lucide-react";
+  Wallet,
+  FileText} from "lucide-react";
 import { useData } from "../context/DataContext";
 
 const formatCurrency = (amount: number) => {
@@ -21,15 +21,21 @@ export default function BorcAlacakPage() {
   const { islemler, kisiler } = useData();
 
   const report = useMemo(() => {
+    // 1. ÖDENMEMİŞ ÇEKLERİ HESAPLA
+    const odenmemisCekler = islemler
+      .filter(t => t.tip === 'cek' && t.is_bitiminde === 0)
+      .sort((a, b) => (a.tarih || '').localeCompare(b.tarih || ''));
+
+    const totalOdenmemisCek = odenmemisCekler.reduce((sum, t) => sum + t.tutar, 0);
+
+    // 2. KİŞİ BAKİYELERİNİ HESAPLA
     const kisiBakiyeleri = kisiler.map(kisi => {
       const personTransactions = islemler.filter(t => t.kisi_id === kisi.id);
 
-      // Toplam Planlanan Borç
       const topOdenecek = personTransactions
         .filter(t => t.tip === 'odenecek')
         .reduce((sum, t) => sum + t.tutar, 0);
 
-      // Toplam Ödenen (Nakit + Verilen Çekler)
       const topOdeme = personTransactions
         .filter(t => t.tip === 'odeme' || t.tip === 'cek')
         .reduce((sum, t) => sum + t.tutar, 0);
@@ -76,9 +82,17 @@ export default function BorcAlacakPage() {
     const totalKalanAlacak = alacakliListesi.reduce((sum, k) => sum + k.kalanAlacak, 0);
     
     // Net Beklenti Hesabı
-    const netBeklenti = totalKalanAlacak - totalKalanBorc;
+    const netBeklenti = totalKalanAlacak - totalKalanBorc - totalOdenmemisCek;
 
-    return { borcluListesi, alacakliListesi, totalKalanBorc, totalKalanAlacak, netBeklenti };
+    return { 
+        borcluListesi, 
+        alacakliListesi, 
+        totalKalanBorc, 
+        totalKalanAlacak, 
+        netBeklenti,
+        odenmemisCekler,
+        totalOdenmemisCek
+    };
   }, [kisiler, islemler]);
 
   return (
@@ -91,28 +105,87 @@ export default function BorcAlacakPage() {
             BORÇ & ALACAK
           </h1>
           <p className="text-neutral-500 mt-1 font-light">
-            Cari hesap bazlı net bakiye raporu. 
+            Cari hesap bakiyeleri ve bekleyen çek ödemeleri.
           </p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         
-        {/* NET BEKLENTİ KARTI */}
-        <div className="mb-8 bg-white p-6 border border-neutral-200 shadow-sm rounded-xl flex items-center justify-between">
+        {/* NET BEKLENTİ KARTI (Tasarım sadeleştirildi) */}
+        <div className="mb-8 bg-white p-8 border border-neutral-200 shadow-sm flex items-center justify-between">
             <div>
-                <span className="text-xs font-bold text-neutral-400 tracking-wider uppercase">GENEL NET BEKLENTİ</span>
-                <div className="flex items-baseline gap-2 mt-1">
-                    <span className={`text-3xl font-light ${report.netBeklenti >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                        {formatCurrency(report.netBeklenti)}
+                <span className="text-xs font-bold text-neutral-400 tracking-wider uppercase">GENEL NET POZİSYON</span>
+                <div className="flex items-baseline gap-2 mt-2">
+                    <span className={`text-4xl font-light tracking-tight ${report.netBeklenti >= 0 ? 'text-neutral-900' : 'text-red-600'}`}>
+                        {report.netBeklenti > 0 ? '+' : ''}{formatCurrency(report.netBeklenti)}
                     </span>
                 </div>
                 <p className="text-xs text-neutral-400 mt-2 font-light">
-                    Tüm cari hesaplar kapatıldığında oluşacak tahmini durum.
+                    (Alacaklar) - (Cari Borçlar) - (Ödenmemiş Çekler)
                 </p>
             </div>
-            <div className={`p-4 rounded-full ${report.netBeklenti >= 0 ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-600'}`}>
-                <Wallet size={32} strokeWidth={1.5} />
+            <div className="w-16 h-16 rounded-full bg-neutral-900 flex items-center justify-center">
+                <Wallet className="text-white" size={28} strokeWidth={1.5} />
+            </div>
+        </div>
+
+        {/* --- ÖDENMEMİŞ ÇEKLER (Tasarım diğer kartlarla eşitlendi) --- */}
+        <div className="mb-8 bg-white border border-neutral-200 shadow-sm">
+            <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
+                        <FileText size={14} className="text-orange-600" />
+                    </div>
+                    <div>
+                        <h2 className="text-sm font-bold text-neutral-900 tracking-wider uppercase">ÖDENMEMİŞ ÇEKLER</h2>
+                        <p className="text-xs text-neutral-500 font-light mt-0.5">Vadesi gelmemiş veya tahsil edilmemiş çekler</p>
+                    </div>
+                </div>
+                <div className="text-xl font-light text-neutral-900">
+                    {formatCurrency(report.totalOdenmemisCek)}
+                </div>
+            </div>
+            
+            <div className="overflow-x-auto">
+                <table className="w-full text-left min-w-[600px]">
+                    <thead className="bg-white border-b border-neutral-100 text-xs text-neutral-400 font-bold uppercase tracking-wider">
+                        <tr>
+                            <th className="px-6 py-4 font-medium">VADE TARİHİ</th>
+                            <th className="px-6 py-4 font-medium">ALACAKLI</th>
+                            <th className="px-6 py-4 font-medium">AÇIKLAMA</th>
+                            <th className="px-6 py-4 font-medium text-right">TUTAR</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-50">
+                        {report.odenmemisCekler.map((cek) => (
+                            <tr key={cek.id} className="hover:bg-neutral-50 transition-colors group">
+                                <td className="px-6 py-4 font-mono text-sm text-neutral-600 group-hover:text-neutral-900">
+                                    {cek.tarih ? cek.tarih.split('-').reverse().join('.') : '-'}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-neutral-600 font-light group-hover:text-neutral-900">
+                                    {kisiler.find(k => k.id === cek.kisi_id)?.ad || 'Bilinmiyor'}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-neutral-500 font-light truncate max-w-xs">
+                                    {cek.aciklama || '-'}
+                                </td>
+                                <td className="px-6 py-4 text-sm font-medium text-neutral-900 text-right">
+                                    {formatCurrency(cek.tutar)}
+                                </td>
+                            </tr>
+                        ))}
+                        {report.odenmemisCekler.length === 0 && (
+                            <tr>
+                                <td colSpan={4} className="p-8 text-center text-neutral-400 text-sm">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <CheckCircle2 size={24} className="text-neutral-200" />
+                                        <span>Ödenmemiş çek bulunmuyor.</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -120,154 +193,152 @@ export default function BorcAlacakPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
           {/* --- SOL KOLON: ALACAKLAR --- */}
-          <div className="space-y-4">
-            <div className="bg-green-50 border border-green-100 p-6 rounded-t-xl flex items-center justify-between">
-              <div>
-                <h2 className="text-green-900 font-medium flex items-center gap-2">
-                  <TrendingUp size={20} /> ALACAK TAKİBİ
-                </h2>
-                <p className="text-green-700/60 text-xs mt-1">Tahsil edilmemiş net bakiyeler</p>
+          <div className="bg-white border border-neutral-200 shadow-sm flex flex-col">
+            <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                    <TrendingUp size={14} className="text-green-600" />
+                </div>
+                <div>
+                    <h2 className="text-sm font-bold text-neutral-900 tracking-wider uppercase">CARİ ALACAKLAR</h2>
+                    <p className="text-xs text-neutral-500 font-light mt-0.5">Tahsil edilecekler</p>
+                </div>
               </div>
-              <div className="text-2xl font-light text-green-700">
+              <div className="text-xl font-light text-green-600">
                 {formatCurrency(report.totalKalanAlacak)}
               </div>
             </div>
 
-            <div className="bg-white border border-neutral-200 rounded-b-xl overflow-hidden shadow-sm">
-              {/* SCROLL WRAPPER BAŞLANGIÇ: Mobilde tablonun kaymasını sağlayan div */}
-              <div className="overflow-x-auto">
-                  <table className="w-full text-left min-w-[500px]"> {/* min-w ekleyerek sıkışmayı engelledik */}
-                    <thead className="bg-neutral-50 border-b border-neutral-100 text-xs text-neutral-400 font-bold uppercase tracking-wider">
-                      <tr>
-                        <th className="px-5 py-3">Kişi / Kurum</th>
-                        <th className="px-5 py-3 text-center">Durum</th>
-                        <th className="px-5 py-3 text-right">Kalan Tutar</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-100">
-                      {report.alacakliListesi.map((row) => (
-                        <tr key={row.kisi.id} className="hover:bg-green-50/30 transition-colors group">
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-green-100 text-green-700 flex items-center justify-center text-xs font-bold">
-                                    {row.kisi.ad.charAt(0)}
-                                </div>
-                                <div>
-                                    <div className="text-sm font-medium text-neutral-900">{row.kisi.ad}</div>
-                                    <div className="text-[10px] text-neutral-400 flex items-center gap-1">
-                                        <CalendarClock size={10} /> Son Vade: {row.sonVade ? row.sonVade.split('-').reverse().join('.') : 'Belirtilmedi'}
-                                    </div>
+            <div className="overflow-x-auto flex-1">
+                <table className="w-full text-left min-w-[500px]">
+                <thead className="bg-white border-b border-neutral-100 text-xs text-neutral-400 font-bold uppercase tracking-wider">
+                    <tr>
+                    <th className="px-6 py-4 font-medium">KİŞİ / KURUM</th>
+                    <th className="px-6 py-4 font-medium text-center">DURUM</th>
+                    <th className="px-6 py-4 font-medium text-right">KALAN</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-50">
+                    {report.alacakliListesi.map((row) => (
+                    <tr key={row.kisi.id} className="hover:bg-neutral-50 transition-colors group">
+                        <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-neutral-100 text-neutral-600 flex items-center justify-center text-xs font-bold group-hover:bg-neutral-900 group-hover:text-white transition-colors">
+                                {row.kisi.ad.charAt(0)}
+                            </div>
+                            <div>
+                                <div className="text-sm font-medium text-neutral-900">{row.kisi.ad}</div>
+                                <div className="text-[10px] text-neutral-400 flex items-center gap-1 font-mono">
+                                    <CalendarClock size={10} /> {row.sonVade ? row.sonVade.split('-').reverse().join('.') : '-'}
                                 </div>
                             </div>
-                          </td>
-                          <td className="px-5 py-4 text-center">
-                            <div className="flex flex-col items-center justify-center gap-1">
-                                <div className="text-[10px] text-neutral-400 whitespace-nowrap">
-                                    {formatCurrency(row.topTahsilat)} / {formatCurrency(row.topAlacak)}
-                                </div>
-                                <div className="w-16 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                                    <div 
-                                        className="h-full bg-green-400" 
-                                        style={{ width: `${Math.min(100, (row.topTahsilat / row.topAlacak) * 100)}%` }}
-                                    ></div>
-                                </div>
+                        </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                            <div className="text-[10px] text-neutral-400 whitespace-nowrap">
+                                %{Math.round((row.topTahsilat / row.topAlacak) * 100)} Tahsilat
                             </div>
-                          </td>
-                          <td className="px-5 py-4 text-right">
-                            <div className="text-sm font-bold text-green-700 whitespace-nowrap">
-                              {formatCurrency(row.kalanAlacak)}
+                            <div className="w-16 h-1 bg-neutral-100 rounded-full overflow-hidden">
+                                <div 
+                                    className="h-full bg-green-500" 
+                                    style={{ width: `${Math.min(100, (row.topTahsilat / row.topAlacak) * 100)}%` }}
+                                ></div>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {report.alacakliListesi.length === 0 && (
-                        <tr><td colSpan={3} className="p-8 text-center text-neutral-400 text-sm">
-                            <div className="flex flex-col items-center gap-2">
-                                <CheckCircle2 size={24} className="text-green-200" />
-                                <span>Tüm alacaklar tahsil edildi.</span>
-                            </div>
-                        </td></tr>
-                      )}
-                    </tbody>
-                  </table>
-              </div>
-              {/* SCROLL WRAPPER BİTİŞ */}
+                        </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                        <div className="text-sm font-medium text-neutral-900 whitespace-nowrap">
+                            {formatCurrency(row.kalanAlacak)}
+                        </div>
+                        </td>
+                    </tr>
+                    ))}
+                    {report.alacakliListesi.length === 0 && (
+                    <tr><td colSpan={3} className="p-8 text-center text-neutral-400 text-sm">
+                        <div className="flex flex-col items-center gap-2">
+                            <CheckCircle2 size={24} className="text-neutral-200" />
+                            <span>Alacak kaydı yok.</span>
+                        </div>
+                    </td></tr>
+                    )}
+                </tbody>
+                </table>
             </div>
           </div>
 
           {/* --- SAĞ KOLON: BORÇLAR --- */}
-          <div className="space-y-4">
-            <div className="bg-red-50 border border-red-100 p-6 rounded-t-xl flex items-center justify-between">
-              <div>
-                <h2 className="text-red-900 font-medium flex items-center gap-2">
-                  <TrendingDown size={20} /> BORÇ TAKİBİ
-                </h2>
-                <p className="text-red-700/60 text-xs mt-1">Ödenmemiş net bakiyeler</p>
+          <div className="bg-white border border-neutral-200 shadow-sm flex flex-col">
+            <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                    <TrendingDown size={14} className="text-red-600" />
+                </div>
+                <div>
+                    <h2 className="text-sm font-bold text-neutral-900 tracking-wider uppercase">CARİ BORÇLAR</h2>
+                    <p className="text-xs text-neutral-500 font-light mt-0.5">Ödenecek bakiyeler</p>
+                </div>
               </div>
-              <div className="text-2xl font-light text-red-700">
+              <div className="text-xl font-light text-red-600">
                 {formatCurrency(report.totalKalanBorc)}
               </div>
             </div>
 
-            <div className="bg-white border border-neutral-200 rounded-b-xl overflow-hidden shadow-sm">
-              {/* SCROLL WRAPPER BAŞLANGIÇ */}
-              <div className="overflow-x-auto">
-                  <table className="w-full text-left min-w-[500px]">
-                    <thead className="bg-neutral-50 border-b border-neutral-100 text-xs text-neutral-400 font-bold uppercase tracking-wider">
-                      <tr>
-                        <th className="px-5 py-3">Kişi / Kurum</th>
-                        <th className="px-5 py-3 text-center">Durum</th>
-                        <th className="px-5 py-3 text-right">Kalan Tutar</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-100">
-                      {report.borcluListesi.map((row) => (
-                        <tr key={row.kisi.id} className="hover:bg-red-50/30 transition-colors group">
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-bold">
-                                    {row.kisi.ad.charAt(0)}
-                                </div>
-                                <div>
-                                    <div className="text-sm font-medium text-neutral-900">{row.kisi.ad}</div>
-                                    <div className="text-[10px] text-neutral-400 flex items-center gap-1">
-                                        <CalendarClock size={10} /> Son Vade: {row.sonVade ? row.sonVade.split('-').reverse().join('.') : 'Belirtilmedi'}
-                                    </div>
+            <div className="overflow-x-auto flex-1">
+                <table className="w-full text-left min-w-[500px]">
+                <thead className="bg-white border-b border-neutral-100 text-xs text-neutral-400 font-bold uppercase tracking-wider">
+                    <tr>
+                    <th className="px-6 py-4 font-medium">KİŞİ / KURUM</th>
+                    <th className="px-6 py-4 font-medium text-center">DURUM</th>
+                    <th className="px-6 py-4 font-medium text-right">KALAN</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-50">
+                    {report.borcluListesi.map((row) => (
+                    <tr key={row.kisi.id} className="hover:bg-neutral-50 transition-colors group">
+                        <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-neutral-100 text-neutral-600 flex items-center justify-center text-xs font-bold group-hover:bg-neutral-900 group-hover:text-white transition-colors">
+                                {row.kisi.ad.charAt(0)}
+                            </div>
+                            <div>
+                                <div className="text-sm font-medium text-neutral-900">{row.kisi.ad}</div>
+                                <div className="text-[10px] text-neutral-400 flex items-center gap-1 font-mono">
+                                    <CalendarClock size={10} /> {row.sonVade ? row.sonVade.split('-').reverse().join('.') : '-'}
                                 </div>
                             </div>
-                          </td>
-                          <td className="px-5 py-4 text-center">
-                            <div className="flex flex-col items-center justify-center gap-1">
-                                <div className="text-[10px] text-neutral-400 whitespace-nowrap">
-                                    {formatCurrency(row.topOdeme)} / {formatCurrency(row.topOdenecek)}
-                                </div>
-                                <div className="w-16 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                                    <div 
-                                        className="h-full bg-red-400" 
-                                        style={{ width: `${Math.min(100, (row.topOdeme / row.topOdenecek) * 100)}%` }}
-                                    ></div>
-                                </div>
+                        </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                            <div className="text-[10px] text-neutral-400 whitespace-nowrap">
+                                %{Math.round((row.topOdeme / row.topOdenecek) * 100)} Ödeme
                             </div>
-                          </td>
-                          <td className="px-5 py-4 text-right">
-                            <div className="text-sm font-bold text-red-700 whitespace-nowrap">
-                              {formatCurrency(row.kalanBorc)}
+                            <div className="w-16 h-1 bg-neutral-100 rounded-full overflow-hidden">
+                                <div 
+                                    className="h-full bg-red-500" 
+                                    style={{ width: `${Math.min(100, (row.topOdeme / row.topOdenecek) * 100)}%` }}
+                                ></div>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {report.borcluListesi.length === 0 && (
-                        <tr><td colSpan={3} className="p-8 text-center text-neutral-400 text-sm">
-                            <div className="flex flex-col items-center gap-2">
-                                <CheckCircle2 size={24} className="text-neutral-200" />
-                                <span>Ödenecek borç bulunmuyor.</span>
-                            </div>
-                        </td></tr>
-                      )}
-                    </tbody>
-                  </table>
-              </div>
-              {/* SCROLL WRAPPER BİTİŞ */}
+                        </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                        <div className="text-sm font-medium text-neutral-900 whitespace-nowrap">
+                            {formatCurrency(row.kalanBorc)}
+                        </div>
+                        </td>
+                    </tr>
+                    ))}
+                    {report.borcluListesi.length === 0 && (
+                    <tr><td colSpan={3} className="p-8 text-center text-neutral-400 text-sm">
+                        <div className="flex flex-col items-center gap-2">
+                            <CheckCircle2 size={24} className="text-neutral-200" />
+                            <span>Borç kaydı yok.</span>
+                        </div>
+                    </td></tr>
+                    )}
+                </tbody>
+                </table>
             </div>
           </div>
 
