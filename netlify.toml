@@ -1,6 +1,5 @@
 [build]
-# Sadece Aycan İnşaat projesini kur ve derle
-command = "npm install --prefix apps/craftops/aycaninsaat && npm run build --prefix apps/craftops/aycaninsaat"
+  command = "npm run install:all && npm run build:all"
   publish = "dist"
 
 # --- YENİ EKLENEN KURAL: STOK DEMO ---
