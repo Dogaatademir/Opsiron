@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from "react";
+// FIX: Kullanılmayan 'Info' importu kaldırıldı.
 import { ArrowRightLeft, Calendar, CreditCard, User, FileText, Check, X, AlertTriangle, Save, RefreshCw, Building2, CheckCircle } from "lucide-react";
 import { CustomSelect } from "../components/CustomSelect";
 import { useData, type Islem } from "../context/DataContext";
@@ -91,7 +92,6 @@ export default function IslemlerDemo() {
   const uniqueDescriptions = useMemo(() => {
     const allDescs = islemler
       .map(i => i.aciklama)
-      // FIX: Burada "Type Predicate" kullanarak TypeScript'e null olmadığını garanti ediyoruz.
       .filter((desc): desc is string => typeof desc === 'string' && desc.trim().length > 0);
       
     // Set ile mükerrer kayıtları temizle ve diziye çevir
@@ -114,7 +114,6 @@ export default function IslemlerDemo() {
     if (val.length >= 3) {
       const lowerVal = val.toLocaleLowerCase('tr-TR');
       
-      // uniqueDescriptions artık kesinlikle string[] olduğu için hata vermez
       const matches = uniqueDescriptions.filter(desc => 
         desc.toLocaleLowerCase('tr-TR').startsWith(lowerVal)
       );
