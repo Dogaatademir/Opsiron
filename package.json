@@ -8,7 +8,7 @@
     "build:opsiron": "cd apps/opsiron-web && npm run build",
     "build:editioncoffee": "cd apps/craftops/editioncoffeeroastery && npm run build",
     "build:aycan": "cd apps/craftops/aycaninsaat && npm run build",
-    "build:all": "npm run build --prefix apps/craftops/aycaninsaat && npm run build --prefix apps/craftops/editioncoffeeroastery && npm run build --prefix apps/craftops/stokdemo && npm run build --prefix apps/craftops/finansdemo",
+    "build:all": "npm run build --prefix apps/opsiron-web && npm run build --prefix apps/craftops/aycaninsaat && npm run build --prefix apps/craftops/editioncoffeeroastery && npm run build --prefix apps/craftops/stokdemo && npm run build --prefix apps/craftops/finansdemo",
     "dev:opsiron": "cd apps/opsiron-web && npm run dev",
     "dev:editioncoffee": "cd apps/craftops/editioncoffeeroastery && npm run dev",
     "dev:aycan": "cd apps/craftops/aycaninsaat && npm run dev"
