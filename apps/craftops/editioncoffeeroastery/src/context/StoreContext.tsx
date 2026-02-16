@@ -442,7 +442,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
         }
 
         isSupabaseReadyRef.current = true;
-      } catch (error) {
+      } catch (error:any) {
         console.error('Supabase initial fetch error', error);
         isSupabaseReadyRef.current = true;
       }
@@ -593,7 +593,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
             }).then();
         }
 
-      } catch (error) {
+      } catch (error:any) {
         console.error("Otomatik rapor gönderme hatası:", error);
         localStorage.removeItem(lockKey);
       }
@@ -1246,7 +1246,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
             if(data.ledgerEntries?.length) await supabase.from('ledger_entries').insert(data.ledgerEntries);
         }
 
-    } catch (error) {
+    } catch (error:any) {
         console.error("Import Error:", error);
         throw new Error('Veri yükleme sırasında veritabanı hatası oluştu.');
     }
@@ -1290,7 +1290,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
             await supabase.from('parties').delete().neq('id', '0');
             await supabase.from('categories').delete().neq('id', '0'); 
             await supabase.from('system_settings').delete().neq('id', '0');
-        } catch (error) {
+        } catch (error:any) {
             console.error("Reset Error:", error);
             throw error;
         }
