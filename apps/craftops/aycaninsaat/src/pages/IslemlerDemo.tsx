@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from "react";
-import { ArrowRightLeft, Calendar, CreditCard, User, FileText, Check, X, AlertTriangle, Save, RefreshCw, Building2, CheckCircle, Info } from "lucide-react";
+import { ArrowRightLeft, Calendar, CreditCard, User, FileText, Check, X, AlertTriangle, Save, RefreshCw, Building2, CheckCircle } from "lucide-react";
 import { CustomSelect } from "../components/CustomSelect";
 import { useData, type Islem } from "../context/DataContext";
 
