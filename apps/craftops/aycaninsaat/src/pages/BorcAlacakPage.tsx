@@ -1,12 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { 
   TrendingDown, 
   TrendingUp, 
   CheckCircle2,
   CalendarClock,
   Wallet,
-  FileText} from "lucide-react";
+  FileText,
+  Building2} from "lucide-react";
 import { useData } from "../context/DataContext";
+import { CustomSelect } from "../components/CustomSelect";
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("tr-TR", {
@@ -18,11 +20,25 @@ const formatCurrency = (amount: number) => {
 };
 
 export default function BorcAlacakPage() {
-  const { islemler, kisiler } = useData();
+  const { islemler, kisiler, projeler } = useData();
+  const [selectedProjeId, setSelectedProjeId] = useState<string>("all");
+
+  const projeOptions = useMemo(() => {
+    return [
+      { value: "all", label: "TÜM ŞANTİYELER (GENEL DURUM)" },
+      ...projeler.map((p) => ({ value: p.id, label: p.ad }))
+    ];
+  }, [projeler]);
+
+  // YENİ: Önce işlemleri şantiyeye göre filtrele
+  const filteredIslemler = useMemo(() => {
+    if (selectedProjeId === "all") return islemler;
+    return islemler.filter(i => i.proje_id === selectedProjeId);
+  }, [islemler, selectedProjeId]);
 
   const report = useMemo(() => {
-    // 1. ÖDENMEMİŞ ÇEKLERİ HESAPLA
-    const odenmemisCekler = islemler
+    // 1. ÖDENMEMİŞ ÇEKLERİ HESAPLA (Filtrelenmiş işlemler üzerinden)
+    const odenmemisCekler = filteredIslemler
       .filter(t => t.tip === 'cek' && t.is_bitiminde === 0)
       .sort((a, b) => (a.tarih || '').localeCompare(b.tarih || ''));
 
@@ -30,7 +46,7 @@ export default function BorcAlacakPage() {
 
     // 2. KİŞİ BAKİYELERİNİ HESAPLA
     const kisiBakiyeleri = kisiler.map(kisi => {
-      const personTransactions = islemler.filter(t => t.kisi_id === kisi.id);
+      const personTransactions = filteredIslemler.filter(t => t.kisi_id === kisi.id);
 
       const topOdenecek = personTransactions
         .filter(t => t.tip === 'odenecek')
@@ -93,29 +109,41 @@ export default function BorcAlacakPage() {
         odenmemisCekler,
         totalOdenmemisCek
     };
-  }, [kisiler, islemler]);
+  }, [kisiler, filteredIslemler]);
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-20">
       
       {/* HEADER */}
       <div className="bg-white border-b border-neutral-200">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <h1 className="text-3xl font-light tracking-tight text-neutral-900">
-            BORÇ & ALACAK
-          </h1>
-          <p className="text-neutral-500 mt-1 font-light">
-            Cari hesap bakiyeleri ve bekleyen çek ödemeleri.
-          </p>
+        <div className="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div>
+            <h1 className="text-3xl font-light tracking-tight text-neutral-900">
+              BORÇ & ALACAK
+            </h1>
+            <p className="text-neutral-500 mt-1 font-light">
+              Cari hesap bakiyeleri ve bekleyen çek ödemeleri.
+            </p>
+          </div>
+          <div className="w-full md:w-80">
+             <CustomSelect 
+                label="ŞANTİYE FİLTRESİ"
+                value={selectedProjeId}
+                onChange={(val) => setSelectedProjeId(val)}
+                options={projeOptions}
+                placeholder="Seçiniz"
+                icon={Building2}
+             />
+          </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         
-        {/* NET BEKLENTİ KARTI (Tasarım sadeleştirildi) */}
+        {/* NET BEKLENTİ KARTI */}
         <div className="mb-8 bg-white p-8 border border-neutral-200 shadow-sm flex items-center justify-between">
             <div>
-                <span className="text-xs font-bold text-neutral-400 tracking-wider uppercase">GENEL NET POZİSYON</span>
+                <span className="text-xs font-bold text-neutral-400 tracking-wider uppercase">GENEL NET POZİSYON {selectedProjeId !== 'all' && `(${projeler.find(p=>p.id === selectedProjeId)?.ad})`}</span>
                 <div className="flex items-baseline gap-2 mt-2">
                     <span className={`text-4xl font-light tracking-tight ${report.netBeklenti >= 0 ? 'text-neutral-900' : 'text-red-600'}`}>
                         {report.netBeklenti > 0 ? '+' : ''}{formatCurrency(report.netBeklenti)}
@@ -130,7 +158,7 @@ export default function BorcAlacakPage() {
             </div>
         </div>
 
-        {/* --- ÖDENMEMİŞ ÇEKLER (Tasarım diğer kartlarla eşitlendi) --- */}
+        {/* --- ÖDENMEMİŞ ÇEKLER --- */}
         <div className="mb-8 bg-white border border-neutral-200 shadow-sm">
             <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
                 <div className="flex items-center gap-3">
@@ -153,7 +181,7 @@ export default function BorcAlacakPage() {
                         <tr>
                             <th className="px-6 py-4 font-medium">VADE TARİHİ</th>
                             <th className="px-6 py-4 font-medium">ALACAKLI</th>
-                            <th className="px-6 py-4 font-medium">AÇIKLAMA</th>
+                            <th className="px-6 py-4 font-medium">ŞANTİYE</th>
                             <th className="px-6 py-4 font-medium text-right">TUTAR</th>
                         </tr>
                     </thead>
@@ -166,8 +194,8 @@ export default function BorcAlacakPage() {
                                 <td className="px-6 py-4 text-sm text-neutral-600 font-light group-hover:text-neutral-900">
                                     {kisiler.find(k => k.id === cek.kisi_id)?.ad || 'Bilinmiyor'}
                                 </td>
-                                <td className="px-6 py-4 text-sm text-neutral-500 font-light truncate max-w-xs">
-                                    {cek.aciklama || '-'}
+                                <td className="px-6 py-4 text-[10px] font-bold text-neutral-400 uppercase">
+                                    {projeler.find(p => p.id === cek.proje_id)?.ad || "-"}
                                 </td>
                                 <td className="px-6 py-4 text-sm font-medium text-neutral-900 text-right">
                                     {formatCurrency(cek.tutar)}
@@ -189,9 +217,7 @@ export default function BorcAlacakPage() {
             </div>
         </div>
 
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
           {/* --- SOL KOLON: ALACAKLAR --- */}
           <div className="bg-white border border-neutral-200 shadow-sm flex flex-col">
             <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">

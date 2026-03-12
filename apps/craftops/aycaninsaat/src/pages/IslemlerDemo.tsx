@@ -1,12 +1,10 @@
 import { useMemo, useState, useRef, useEffect } from "react";
-// FIX: Kullanılmayan 'Info' importu kaldırıldı.
-import { ArrowRightLeft, Calendar, CreditCard, User, FileText, Check, X, AlertTriangle, Save, RefreshCw, Building2, CheckCircle } from "lucide-react";
+import { ArrowRightLeft, Calendar, CreditCard, User, FileText, Check, X, AlertTriangle, Save, RefreshCw, Building2, CheckCircle, Info, Filter } from "lucide-react";
 import { CustomSelect } from "../components/CustomSelect";
 import { useData, type Islem } from "../context/DataContext";
 
 // --- YARDIMCI FONKSİYONLAR ---
 
-// GÜVENLİK FIX: Telefondan (HTTP) girildiğinde crypto.randomUUID() çalışmaz.
 const generateUUID = () => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -58,15 +56,23 @@ const INITIAL_FORM = {
 };
 
 export default function IslemlerDemo() {
-  const { kisiler, islemler, projeler, addIslem, updateIslem, removeIslem } = useData();
+  const { kisiler, islemler, projeler, kisiProjeler, addIslem, updateIslem, removeIslem } = useData();
 
   const [form, setForm] = useState<any>(INITIAL_FORM);
   const [editForm, setEditForm] = useState<any>(null);
+  
+  // Arama ve Filtreleme State'leri
   const [query, setQuery] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  
+  // Sayfalandırma State'i
+  const [visibleCount, setVisibleCount] = useState(50);
   
   // Modallar için State'ler
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [checkModal, setCheckModal] = useState<{ item: Islem; newStatus: number; message: string } | null>(null);
+  const [infoModal, setInfoModal] = useState<Islem | null>(null);
 
   // Autocomplete (Öneri) State'leri
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -77,7 +83,6 @@ export default function IslemlerDemo() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("İşlem başarıyla tamamlandı.");
 
-  // Dışarı tıklandığında öneri listesini kapat
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (suggestionRef.current && !suggestionRef.current.contains(event.target as Node)) {
@@ -88,13 +93,10 @@ export default function IslemlerDemo() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Tüm benzersiz açıklamaları hafızaya al
   const uniqueDescriptions = useMemo(() => {
     const allDescs = islemler
       .map(i => i.aciklama)
       .filter((desc): desc is string => typeof desc === 'string' && desc.trim().length > 0);
-      
-    // Set ile mükerrer kayıtları temizle ve diziye çevir
     return Array.from(new Set(allDescs));
   }, [islemler]);
 
@@ -105,21 +107,18 @@ export default function IslemlerDemo() {
     return 1;
   };
 
-  // --- AÇIKLAMA DEĞİŞİKLİĞİ VE ÖNERİ FİLTRELEME ---
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setForm({ ...form, aciklama: val });
 
-    // 3 karakter ve üzeri ise öneri yap
     if (val.length >= 3) {
       const lowerVal = val.toLocaleLowerCase('tr-TR');
-      
       const matches = uniqueDescriptions.filter(desc => 
         desc.toLocaleLowerCase('tr-TR').startsWith(lowerVal)
       );
       
       if (matches.length > 0) {
-        setSuggestions(matches.slice(0, 5)); // En fazla 5 öneri göster
+        setSuggestions(matches.slice(0, 5));
         setShowSuggestions(true);
       } else {
         setShowSuggestions(false);
@@ -129,13 +128,11 @@ export default function IslemlerDemo() {
     }
   };
 
-  // Öneri seçildiğinde
   const handleSuggestionClick = (desc: string) => {
     setForm({ ...form, aciklama: desc });
     setShowSuggestions(false);
   };
 
-  // --- KAYIT EKLEME ---
   const saveCreate = async () => {
     try {
       if (!form.kisi_id || !form.tip || !form.tutar) return alert("Eksik bilgi: Kişi, Tip ve Tutar zorunludur.");
@@ -164,19 +161,15 @@ export default function IslemlerDemo() {
         doviz: form.doviz as any,
       };
 
-      await new Promise(resolve => setTimeout(resolve, 300));
-
       await addIslem(newRow);
       
       setForm({ ...INITIAL_FORM }); 
-      setSuggestions([]); // Önerileri temizle
+      setSuggestions([]);
       setShowSuggestions(false);
       
       setSuccessMessage("Yeni işlem başarıyla eklendi.");
       setShowSuccess(true);
-      setTimeout(() => {
-        setShowSuccess(false);
-      }, 3000);
+      setTimeout(() => setShowSuccess(false), 3000);
 
     } catch (error) {
       console.error("Kayıt hatası:", error);
@@ -186,7 +179,6 @@ export default function IslemlerDemo() {
     }
   };
 
-  // --- DÜZENLEME ---
   const startEdit = (r: Islem) => {
     setEditForm({
       ...r,
@@ -224,9 +216,7 @@ export default function IslemlerDemo() {
 
       setSuccessMessage("Kayıt başarıyla güncellendi.");
       setShowSuccess(true);
-      setTimeout(() => {
-        setShowSuccess(false);
-      }, 3000);
+      setTimeout(() => setShowSuccess(false), 3000);
 
     } catch (error) {
       console.error("Güncelleme hatası:", error);
@@ -234,7 +224,6 @@ export default function IslemlerDemo() {
     }
   };
 
-  // --- SİLME İŞLEMİ ---
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
@@ -246,7 +235,6 @@ export default function IslemlerDemo() {
     }
   };
 
-  // --- ÇEK DURUMU DEĞİŞTİRME BAŞLANGIÇ (MODAL AÇAR) ---
   const toggleCheckStatus = (r: Islem) => {
     const newStatus = r.is_bitiminde === 1 ? 0 : 1;
     const message = newStatus === 1 
@@ -260,7 +248,6 @@ export default function IslemlerDemo() {
     });
   };
 
-  // --- ÇEK DURUMU ONAYLA (İŞLEMİ YAPAR) ---
   const confirmCheckToggle = async () => {
     if (!checkModal) return;
     try {
@@ -280,33 +267,61 @@ export default function IslemlerDemo() {
     
     return islemler
       .filter((r) => {
-        if (!query) return true;
+        // 1. Metin Araması
+        let textMatch = true;
+        if (query) {
+          const kisi = kisiler.find(k => k.id === r.kisi_id);
+          const proje = projeler.find(p => p.id === r.proje_id);
+          
+          const kisiAdi = kisi ? kisi.ad.toLocaleLowerCase('tr-TR') : "";
+          const projeAdi = proje ? proje.ad.toLocaleLowerCase('tr-TR') : "";
+          const aciklama = (r.aciklama || "").toLocaleLowerCase('tr-TR');
+          const tip = (r.tip || "").toLocaleLowerCase('tr-TR');
+      
+          textMatch = kisiAdi.includes(lowerQuery) || projeAdi.includes(lowerQuery) || aciklama.includes(lowerQuery) || tip.includes(lowerQuery);
+        }
 
-        const kisi = kisiler.find(k => k.id === r.kisi_id);
-        const proje = projeler.find(p => p.id === r.proje_id);
-        
-        const kisiAdi = kisi ? kisi.ad.toLocaleLowerCase('tr-TR') : "";
-        const projeAdi = proje ? proje.ad.toLocaleLowerCase('tr-TR') : "";
-        const aciklama = (r.aciklama || "").toLocaleLowerCase('tr-TR');
-        const tip = (r.tip || "").toLocaleLowerCase('tr-TR');
-    
-        return (
-          kisiAdi.includes(lowerQuery) ||
-          projeAdi.includes(lowerQuery) ||
-          aciklama.includes(lowerQuery) ||
-          tip.includes(lowerQuery)
-        );
+        // 2. Tarih Filtrelemesi
+        let dateMatch = true;
+        if (r.tarih) {
+          if (startDate && r.tarih < startDate) dateMatch = false;
+          if (endDate && r.tarih > endDate) dateMatch = false;
+        } else if (startDate || endDate) {
+           // Tarih filtresi aktifse ve işlemin tarihi yoksa (is_bitiminde vb.) gizle
+           dateMatch = false;
+        }
+
+        return textMatch && dateMatch;
       })
       .sort((a, b) => (b.tarih || "").localeCompare(a.tarih || ""));
-  }, [islemler, kisiler, projeler, query]);
+  }, [islemler, kisiler, projeler, query, startDate, endDate]);
 
-  const kisiOptions = useMemo(
-    () => 
-      kisiler
-        .map((k) => ({ value: k.id, label: k.ad }))
-        .sort((a, b) => a.label.localeCompare(b.label, "tr")),
-    [kisiler]
-  );
+  // Sayfalandırma (Pagination) için görünen veriyi kesiyoruz
+  const displayedData = filtered.slice(0, visibleCount);
+
+  const formKisiOptions = useMemo(() => {
+    if (!form.proje_id) return [];
+    const linkedKisiIds = kisiProjeler
+      .filter(kp => kp.proje_id === form.proje_id)
+      .map(kp => kp.kisi_id);
+
+    return kisiler
+      .filter(k => linkedKisiIds.includes(k.id))
+      .map(k => ({ value: k.id, label: k.ad }))
+      .sort((a, b) => a.label.localeCompare(b.label, "tr"));
+  }, [kisiler, kisiProjeler, form.proje_id]);
+
+  const editKisiOptions = useMemo(() => {
+    if (!editForm?.proje_id) return [];
+    const linkedKisiIds = kisiProjeler
+      .filter(kp => kp.proje_id === editForm.proje_id)
+      .map(kp => kp.kisi_id);
+
+    return kisiler
+      .filter(k => linkedKisiIds.includes(k.id))
+      .map(k => ({ value: k.id, label: k.ad }))
+      .sort((a, b) => a.label.localeCompare(b.label, "tr"));
+  }, [kisiler, kisiProjeler, editForm?.proje_id]);
 
   const projeOptions = useMemo(
     () => projeler.map(p => ({ value: p.id, label: p.ad })),
@@ -341,216 +356,233 @@ export default function IslemlerDemo() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
+        
+        {/* YENİLENMİŞ FORM DÜZENİ */}
         <div className="bg-white p-8 border border-neutral-200 mb-8 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-8 border-b border-neutral-100 pb-4">
             <div className="w-8 h-8 rounded-full bg-neutral-900 flex items-center justify-center">
               <span className="text-white text-sm font-light">+</span>
             </div>
             <h2 className="text-lg font-light tracking-tight text-neutral-900">YENİ İŞLEM GİRİŞİ</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-            
-             <div className="md:col-span-12 w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            {/* SOL: PROJE & KİŞİ BİLGİLERİ */}
+            <div className="space-y-6">
+               <h3 className="text-xs font-bold text-neutral-400 tracking-wider">PROJE VE KİŞİ BİLGİLERİ</h3>
+               <CustomSelect 
+                  label="ŞANTİYE / PROJE" 
+                  value={form.proje_id} 
+                  onChange={(val) => setForm({...form, proje_id: val, kisi_id: ""})} 
+                  options={projeOptions} 
+                  placeholder="Şantiye Seçiniz" 
+                  icon={Building2} 
+                />
+                
                 <CustomSelect 
-                    label="ŞANTİYE / PROJE" 
-                    value={form.proje_id} 
-                    onChange={(val) => setForm({...form, proje_id: val})} 
-                    options={projeOptions} 
-                    placeholder="Şantiye Seçiniz" 
-                    icon={Building2} 
+                  label="KİŞİ" 
+                  value={form.kisi_id} 
+                  onChange={(val) => setForm({ ...form, kisi_id: val })} 
+                  options={formKisiOptions} 
+                  placeholder={form.proje_id ? "Seçiniz" : "Önce Şantiye Seçin"} 
+                  icon={User} 
                 />
-             </div>
 
-             <div className="md:col-span-3 w-full">
-              <label className="block text-xs font-medium text-neutral-500 mb-3 tracking-wider">
-                {form.tip === 'cek' ? 'ÇEK VADESİ' : 'TARİH'}
-              </label>
-              <div className="relative w-full">
-                <input
-                  type="date"
-                  className="w-full h-14 px-4 bg-white border border-neutral-300 text-neutral-900 outline-none focus:border-neutral-900 font-light disabled:bg-neutral-100 disabled:text-neutral-400 transition-colors appearance-none"
-                  value={form.tarih}
-                  onChange={(e) => setForm({ ...form, tarih: e.target.value })}
-                  disabled={form.is_bitiminde && form.tip !== 'cek'}
-                />
-                 {(!form.tarih && !form.is_bitiminde) && (
-                  <Calendar className="absolute right-4 top-4 text-neutral-400 pointer-events-none" size={20} />
-                )}
-              </div>
-            </div>
-
-            <div className="md:col-span-3 w-full">
-               <CustomSelect
-                label="İŞLEM TİPİ"
-                value={form.tip}
-                onChange={(val) => setForm({ ...form, tip: val, is_bitiminde: false })}
-                options={ISLEM_TIP_OPTIONS}
-                placeholder="Seçiniz"
-                icon={CreditCard}
-              />
-               {(form.tip === "odenecek" || form.tip === "alacak") && (
-                <label className="flex items-center gap-2 mt-2 cursor-pointer group select-none">
-                  <div className={`w-4 h-4 border flex items-center justify-center transition-colors ${form.is_bitiminde ? "border-neutral-900 bg-neutral-900" : "border-neutral-300"}`}>
-                    {form.is_bitiminde && <Check size={12} className="text-white" />}
+                <div className="relative" ref={suggestionRef}>
+                  <label className="block text-xs font-medium text-neutral-500 mb-3 tracking-wider">AÇIKLAMA</label>
+                  <div className="relative">
+                    <input
+                      className="w-full h-14 px-4 bg-white border border-neutral-300 text-neutral-900 outline-none focus:border-neutral-900 font-light placeholder:text-neutral-300 transition-colors"
+                      value={form.aciklama}
+                      onChange={handleDescriptionChange}
+                      onFocus={() => { if(form.aciklama.length >= 3 && suggestions.length > 0) setShowSuggestions(true) }}
+                      placeholder="Opsiyonel açıklama..."
+                    />
+                    {showSuggestions && suggestions.length > 0 && (
+                      <div className="absolute z-10 w-full bg-white border border-neutral-200 shadow-lg mt-1 max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+                        <ul className="py-1">
+                          {suggestions.map((desc, index) => (
+                            <li key={index} onClick={() => handleSuggestionClick(desc)} className="px-4 py-3 text-sm font-light text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900 cursor-pointer transition-colors border-b border-neutral-50 last:border-0">{desc}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                  <input type="checkbox" checked={form.is_bitiminde} onChange={(e) => setForm({ ...form, is_bitiminde: e.target.checked })} className="sr-only" />
-                  <span className="text-xs text-neutral-600 font-light">İş bitiminde / İleri Tarihte</span>
-                </label>
-              )}
+                </div>
             </div>
 
-             <div className="md:col-span-3 flex gap-3">
-              <div className="flex-1">
-                 <label className="block text-xs font-medium text-neutral-500 mb-3 tracking-wider">TUTAR</label>
-                 <input
-                  className="w-full h-14 px-4 border border-neutral-300 text-neutral-900 outline-none focus:border-neutral-900 font-light placeholder:text-neutral-300 transition-colors"
-                  value={form.tutar}
-                  onChange={(e) => setForm({ ...form, tutar: e.target.value })}
-                  onBlur={() => setForm({ ...form, tutar: formatTR(form.tutar) })}
-                  placeholder="0,00"
-                />
-              </div>
-              <div className="w-28">
-                <CustomSelect label="DÖVİZ" value={form.doviz} onChange={(val) => setForm({ ...form, doviz: val })} options={DOVIZ_OPTIONS} placeholder="Seç" />
-              </div>
-            </div>
-
-             <div className="md:col-span-3">
-              <CustomSelect label="KİŞİ" value={form.kisi_id} onChange={(val) => setForm({ ...form, kisi_id: val })} options={kisiOptions} placeholder="Seçiniz" icon={User} />
-            </div>
-
-            <div className="md:col-span-9 relative" ref={suggestionRef}>
-              <label className="block text-xs font-medium text-neutral-500 mb-3 tracking-wider">AÇIKLAMA</label>
-              <div className="relative">
-                <input
-                  className="w-full h-14 px-4 bg-white border border-neutral-300 text-neutral-900 outline-none focus:border-neutral-900 font-light placeholder:text-neutral-300 transition-colors"
-                  value={form.aciklama}
-                  onChange={handleDescriptionChange}
-                  onFocus={() => { if(form.aciklama.length >= 3 && suggestions.length > 0) setShowSuggestions(true) }}
-                  placeholder="Opsiyonel açıklama..."
-                />
-                {/* AUTOCOMPLETE DROPDOWN */}
-                {showSuggestions && suggestions.length > 0 && (
-                  <div className="absolute z-10 w-full bg-white border border-neutral-200 shadow-lg mt-1 max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
-                    <ul className="py-1">
-                      {suggestions.map((desc, index) => (
-                        <li 
-                          key={index}
-                          onClick={() => handleSuggestionClick(desc)}
-                          className="px-4 py-3 text-sm font-light text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900 cursor-pointer transition-colors border-b border-neutral-50 last:border-0"
-                        >
-                          {desc}
-                        </li>
-                      ))}
-                    </ul>
+            {/* SAĞ: FİNANSAL DETAYLAR */}
+            <div className="space-y-6">
+               <h3 className="text-xs font-bold text-neutral-400 tracking-wider">FİNANSAL DETAYLAR</h3>
+               <div className="grid grid-cols-2 gap-4">
+                  <div>
+                     <CustomSelect label="İŞLEM TİPİ" value={form.tip} onChange={(val) => setForm({ ...form, tip: val, is_bitiminde: false })} options={ISLEM_TIP_OPTIONS} placeholder="Seçiniz" icon={CreditCard} />
+                     {(form.tip === "odenecek" || form.tip === "alacak") && (
+                      <label className="flex items-center gap-2 mt-2 cursor-pointer group select-none">
+                        <div className={`w-4 h-4 border flex items-center justify-center transition-colors ${form.is_bitiminde ? "border-neutral-900 bg-neutral-900" : "border-neutral-300"}`}>
+                          {form.is_bitiminde && <Check size={12} className="text-white" />}
+                        </div>
+                        <input type="checkbox" checked={form.is_bitiminde} onChange={(e) => setForm({ ...form, is_bitiminde: e.target.checked })} className="sr-only" />
+                        <span className="text-xs text-neutral-600 font-light">İş bitiminde / İleri Tarihte</span>
+                      </label>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-500 mb-3 tracking-wider">{form.tip === 'cek' ? 'ÇEK VADESİ' : 'TARİH'}</label>
+                    <div className="relative w-full">
+                      <input
+                        type="date"
+                        className="w-full h-14 px-4 bg-white border border-neutral-300 text-neutral-900 outline-none focus:border-neutral-900 font-light disabled:bg-neutral-100 disabled:text-neutral-400 transition-colors appearance-none"
+                        value={form.tarih}
+                        onChange={(e) => setForm({ ...form, tarih: e.target.value })}
+                        disabled={form.is_bitiminde && form.tip !== 'cek'}
+                      />
+                       {(!form.tarih && !form.is_bitiminde) && <Calendar className="absolute right-4 top-4 text-neutral-400 pointer-events-none" size={20} />}
+                    </div>
+                  </div>
+               </div>
 
-            <div className="md:col-span-3 flex items-end">
-              <button 
-                onClick={saveCreate} 
-                disabled={isSubmitting}
-                className={`w-full h-14 bg-neutral-900 text-white font-light tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.99] flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
-              >
-                 {isSubmitting ? (
-                    <>
-                        <RefreshCw size={20} className="animate-spin" />
-                        KAYDEDİLİYOR...
-                    </>
-                ) : (
-                    "EKLE"
-                )}
-              </button>
+               <div className="flex gap-4">
+                  <div className="flex-1">
+                     <label className="block text-xs font-medium text-neutral-500 mb-3 tracking-wider">TUTAR</label>
+                     <input className="w-full h-14 px-4 border border-neutral-300 text-neutral-900 outline-none focus:border-neutral-900 font-light placeholder:text-neutral-300 transition-colors" value={form.tutar} onChange={(e) => setForm({ ...form, tutar: e.target.value })} onBlur={() => setForm({ ...form, tutar: formatTR(form.tutar) })} placeholder="0,00" />
+                  </div>
+                  <div className="w-32">
+                    <CustomSelect label="DÖVİZ" value={form.doviz} onChange={(val) => setForm({ ...form, doviz: val })} options={DOVIZ_OPTIONS} placeholder="Seç" />
+                  </div>
+               </div>
+
+               <div className="pt-2">
+                  <button onClick={saveCreate} disabled={isSubmitting} className={`w-full h-14 bg-neutral-900 text-white font-light tracking-widest hover:bg-neutral-800 transition-all active:scale-[0.99] flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                     {isSubmitting ? <><RefreshCw size={20} className="animate-spin" /> KAYDEDİLİYOR...</> : "EKLE"}
+                  </button>
+               </div>
             </div>
           </div>
         </div>
 
         <div className="bg-white border border-neutral-200 shadow-sm">
-            <div className="p-4 border-b border-neutral-100 flex justify-end">
-                <input
-                  placeholder="Ara: Kişi, Proje ..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="p-2 text-sm border-b border-neutral-300 outline-none focus:border-neutral-900 bg-transparent w-64 font-light text-right transition-colors"
-                />
+            {/* YENİLENMİŞ GELİŞMİŞ FİLTRE BÖLÜMÜ */}
+            <div className="p-4 border-b border-neutral-100 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between bg-neutral-50/50">
+               <div className="flex flex-wrap gap-4 items-center flex-1">
+                  <div className="flex items-center gap-2">
+                     <Filter size={16} className="text-neutral-400" />
+                     <label className="text-xs font-medium text-neutral-500 tracking-wider">BAŞLANGIÇ</label>
+                     <input type="date" value={startDate} onChange={e => {setStartDate(e.target.value); setVisibleCount(50);}} className="p-2 text-sm border-b border-neutral-300 outline-none focus:border-neutral-900 bg-transparent font-light" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                     <label className="text-xs font-medium text-neutral-500 tracking-wider">BİTİŞ</label>
+                     <input type="date" value={endDate} onChange={e => {setEndDate(e.target.value); setVisibleCount(50);}} className="p-2 text-sm border-b border-neutral-300 outline-none focus:border-neutral-900 bg-transparent font-light" />
+                  </div>
+                  {(startDate || endDate) && (
+                    <button onClick={() => {setStartDate(""); setEndDate(""); setVisibleCount(50);}} className="text-xs text-neutral-500 hover:text-neutral-900 underline transition-colors">Temizle</button>
+                  )}
+               </div>
+               <div className="w-full md:w-auto">
+                 <input placeholder="Ara: Kişi, Proje, Açıklama..." value={query} onChange={(e) => {setQuery(e.target.value); setVisibleCount(50);}} className="p-2 text-sm border-b border-neutral-300 outline-none focus:border-neutral-900 bg-transparent w-full md:w-72 font-light transition-colors" />
+               </div>
             </div>
 
             <div className="w-full overflow-x-auto">
-                <table className="w-full text-left min-w-[900px]">
+                {/* min-w-[950px] yerine responsif ve daha dar bir minimum genişlik atandı */}
+                <table className="w-full text-left min-w-[700px] lg:min-w-full">
                   <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
                       <th className="px-6 py-4 text-xs font-medium text-neutral-500 tracking-wider whitespace-nowrap">TARİH</th>
-                      <th className="px-6 py-4 text-xs font-medium text-neutral-500 tracking-wider whitespace-nowrap">ŞANTİYE</th>
+                      <th className="px-6 py-4 text-xs font-medium text-neutral-500 tracking-wider">ŞANTİYE</th>
                       <th className="px-6 py-4 text-xs font-medium text-neutral-500 tracking-wider whitespace-nowrap">TİP</th>
                       <th className="px-6 py-4 text-xs font-medium text-neutral-500 tracking-wider text-right whitespace-nowrap">TUTAR</th>
-                      <th className="px-6 py-4 text-xs font-medium text-neutral-500 tracking-wider whitespace-nowrap">KİŞİ</th>
-                      <th className="px-6 py-4 text-xs font-medium text-neutral-500 tracking-wider whitespace-nowrap">AÇIKLAMA</th>
+                      <th className="px-6 py-4 text-xs font-medium text-neutral-500 tracking-wider">KİŞİ</th>
+                      <th className="px-6 py-4 text-xs font-medium text-neutral-500 tracking-wider">AÇIKLAMA</th>
                       <th className="px-6 py-4 text-center w-32 text-xs font-medium text-neutral-500 tracking-wider whitespace-nowrap">İŞLEM</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
-                     {filtered.map((r) => (
-                        <tr key={r.id} className="hover:bg-neutral-50 group transition-colors">
-                           <td className="px-6 py-5 font-light text-neutral-600 whitespace-nowrap">
-                              {r.is_bitiminde && r.tip !== 'cek' ? "—" : formatDateDisplay(r.tarih)}
-                           </td>
-                           <td className="px-6 py-5 whitespace-nowrap">
-                              <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
-                                {projeler.find(p => p.id === r.proje_id)?.ad || "GENEL"}
-                              </span>
-                           </td>
-                           <td className="px-6 py-5 whitespace-nowrap">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-neutral-200 bg-white text-neutral-600 text-xs font-medium uppercase tracking-wide">
-                                 {getTypeLabel(r.tip, r.is_bitiminde)}
-                              </span>
-                           </td>
-                           <td className="px-6 py-5 text-right font-mono text-neutral-900 whitespace-nowrap">
-                              {Number(r.tutar).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺
-                              {r.doviz !== "TRY" && (
-                                <div className="text-[10px] text-neutral-400 mt-1">
-                                  ({Number(r.tutar_raw).toLocaleString()} {r.doviz})
-                                </div>
-                              )}
-                           </td>
-                           <td className="px-6 py-5 font-light text-neutral-600 whitespace-nowrap">
-                              {kisiler.find((k) => k.id === r.kisi_id)?.ad || "Bilinmiyor"}
-                           </td>
-                           <td className="px-6 py-5 font-light text-neutral-500 truncate max-w-xs">{r.aciklama}</td>
-                           <td className="px-6 py-5 text-center whitespace-nowrap">
-                             <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                
-                                {r.tip === 'cek' && (
-                                  <button 
-                                    onClick={() => toggleCheckStatus(r)} 
-                                    title={r.is_bitiminde === 1 ? "Bekliyor durumuna al" : "Ödendi olarak işaretle"}
-                                    className={`w-8 h-8 flex items-center justify-center rounded-full border transition-colors ${r.is_bitiminde === 1 ? 'bg-white border-neutral-300 text-neutral-500 hover:bg-neutral-100' : 'bg-white border-neutral-300 text-neutral-900 hover:bg-neutral-100'}`}
-                                  >
-                                    <RefreshCw size={14} />
-                                  </button>
-                                )}
-
-                                <button onClick={() => startEdit(r)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-400 hover:text-neutral-900 hover:border-neutral-900 transition-colors">
-                                    <FileText size={14} />
-                                </button>
-                                
-                                <button onClick={() => setDeleteId(r.id)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-400 hover:text-red-600 hover:border-red-600 transition-colors">
-                                    <X size={14} />
-                                </button>
-                             </div>
-                           </td>
+                     {displayedData.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-6 py-8 text-center text-neutral-500 font-light">
+                            Belirtilen kriterlere uygun işlem bulunamadı.
+                          </td>
                         </tr>
-                     ))}
+                     ) : (
+                       displayedData.map((r) => (
+                          <tr key={r.id} className="hover:bg-neutral-50 group transition-colors">
+                             <td className="px-6 py-5 font-light text-neutral-600 whitespace-nowrap">
+                                {r.is_bitiminde && r.tip !== 'cek' ? "—" : formatDateDisplay(r.tarih)}
+                             </td>
+                             <td className="px-6 py-5">
+                                {/* whitespace-nowrap kaldırıldı, uzun şantiye isimleri alt satıra geçebilir */}
+                                <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider block">
+                                  {projeler.find(p => p.id === r.proje_id)?.ad || "GENEL"}
+                                </span>
+                             </td>
+                             <td className="px-6 py-5 whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-neutral-200 bg-white text-neutral-600 text-[11px] font-medium uppercase tracking-wide">
+                                   {getTypeLabel(r.tip, r.is_bitiminde)}
+                                </span>
+                             </td>
+                             <td className="px-6 py-5 text-right font-mono text-neutral-900 whitespace-nowrap">
+                                {Number(r.tutar).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺
+                                {r.doviz !== "TRY" && (
+                                  <div className="text-[10px] text-neutral-400 mt-1">
+                                    ({Number(r.tutar_raw).toLocaleString()} {r.doviz})
+                                  </div>
+                                )}
+                             </td>
+                             <td className="px-6 py-5 font-light text-neutral-600 min-w-[120px]">
+                                {/* whitespace-nowrap kaldırıldı */}
+                                {kisiler.find((k) => k.id === r.kisi_id)?.ad || "Bilinmiyor"}
+                             </td>
+                             <td className="px-6 py-5 font-light text-neutral-500 min-w-[180px]">
+                                {/* whitespace-nowrap kaldırıldı, truncate opsiyonel tutuldu */}
+                                {r.aciklama}
+                             </td>
+                             <td className="px-6 py-5 text-center whitespace-nowrap">
+                               <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  
+                                  {r.tip === 'cek' && (
+                                    <button onClick={() => toggleCheckStatus(r)} title={r.is_bitiminde === 1 ? "Bekliyor durumuna al" : "Ödendi olarak işaretle"} className={`w-8 h-8 flex items-center justify-center rounded-full border transition-colors ${r.is_bitiminde === 1 ? 'bg-white border-neutral-300 text-neutral-500 hover:bg-neutral-100' : 'bg-white border-neutral-300 text-neutral-900 hover:bg-neutral-100'}`}>
+                                      <RefreshCw size={14} />
+                                    </button>
+                                  )}
+                                  
+                                  <button onClick={() => setInfoModal(r)} title="Kayıt Bilgisi" className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-400 hover:text-blue-600 hover:border-blue-600 transition-colors">
+                                      <Info size={14} />
+                                  </button>
+  
+                                  <button onClick={() => startEdit(r)} title="Düzenle" className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-400 hover:text-neutral-900 hover:border-neutral-900 transition-colors">
+                                      <FileText size={14} />
+                                  </button>
+                                  
+                                  <button onClick={() => setDeleteId(r.id)} title="Sil" className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-400 hover:text-red-600 hover:border-red-600 transition-colors">
+                                      <X size={14} />
+                                  </button>
+                               </div>
+                             </td>
+                          </tr>
+                       ))
+                     )}
                   </tbody>
                 </table>
             </div>
+
+            {/* YENİ: DAHA FAZLA GÖSTER / SAYFALANDIRMA BUTONU */}
+            {filtered.length > visibleCount && (
+              <div className="p-6 border-t border-neutral-100 bg-neutral-50 flex justify-center">
+                <button 
+                  onClick={() => setVisibleCount(prev => prev + 50)} 
+                  className="px-6 py-2.5 bg-white border border-neutral-300 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 transition-colors text-sm font-light tracking-wide rounded-full shadow-sm flex items-center gap-2"
+                >
+                  <RefreshCw size={14} /> Daha Fazla Göster ({filtered.length - visibleCount} işlem kaldı)
+                </button>
+              </div>
+            )}
         </div>
       </div>
 
       {editForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+           {/* ... Edit Modalı İçeriği Aynı Bırakıldı (Sadece tasarım tutarlılığı sağlandı) ... */}
            <div className="bg-white border border-neutral-200 shadow-2xl w-full max-w-5xl overflow-hidden max-h-[90vh] overflow-y-auto">
              <div className="flex items-center justify-between p-6 border-b border-neutral-100 bg-neutral-50">
                  <div className="flex items-center gap-3">
@@ -563,18 +595,19 @@ export default function IslemlerDemo() {
                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                  
                  <div className="md:col-span-12 w-full">
-                    <CustomSelect label="ŞANTİYE" value={editForm.proje_id} onChange={(val) => setEditForm({...editForm, proje_id: val})} options={projeOptions} placeholder="Seç" icon={Building2} />
+                    <CustomSelect 
+                      label="ŞANTİYE" 
+                      value={editForm.proje_id} 
+                      onChange={(val) => setEditForm({...editForm, proje_id: val, kisi_id: ""})} 
+                      options={projeOptions} 
+                      placeholder="Seç" 
+                      icon={Building2} 
+                    />
                  </div>
 
                  <div className="md:col-span-4 w-full">
                     <label className="block text-xs font-medium text-neutral-500 mb-3 tracking-wider">TARİH</label>
-                    <input 
-                      type="date" 
-                      className="w-full h-14 px-4 bg-white border border-neutral-300 outline-none appearance-none text-neutral-900 font-light" 
-                      value={editForm.tarih} 
-                      onChange={(e) => setEditForm({...editForm, tarih: e.target.value})} 
-                      disabled={editForm.is_bitiminde && editForm.tip !== 'cek'} 
-                    />
+                    <input type="date" className="w-full h-14 px-4 bg-white border border-neutral-300 outline-none appearance-none text-neutral-900 font-light" value={editForm.tarih} onChange={(e) => setEditForm({...editForm, tarih: e.target.value})} disabled={editForm.is_bitiminde && editForm.tip !== 'cek'} />
                  </div>
                  
                  <div className="md:col-span-4 w-full">
@@ -582,7 +615,14 @@ export default function IslemlerDemo() {
                  </div>
 
                  <div className="md:col-span-4 w-full">
-                   <CustomSelect label="KİŞİ" value={editForm.kisi_id} onChange={(val) => setEditForm({...editForm, kisi_id: val})} options={kisiOptions} placeholder="Seç" icon={User} />
+                   <CustomSelect 
+                     label="KİŞİ" 
+                     value={editForm.kisi_id} 
+                     onChange={(val) => setEditForm({...editForm, kisi_id: val})} 
+                     options={editKisiOptions} 
+                     placeholder={editForm.proje_id ? "Seç" : "Önce Şantiye Seçin"} 
+                     icon={User} 
+                   />
                  </div>
 
                  <div className="md:col-span-6 flex gap-3">
@@ -627,12 +667,11 @@ export default function IslemlerDemo() {
         </div>
       )}
 
-      {/* YENİ: ÇEK DURUM DEĞİŞTİRME MODALI */}
+      {/* ÇEK DURUM DEĞİŞTİRME MODALI */}
       {checkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
            <div className="bg-white border border-neutral-200 shadow-2xl w-full max-w-md p-0 overflow-hidden">
              <div className="bg-neutral-50 p-6 border-b border-neutral-100 text-center">
-                {/* İkon rengi mavi/nötr tonlarında */}
                 <div className="mx-auto w-12 h-12 bg-sky-50 rounded-full flex items-center justify-center mb-4">
                   <RefreshCw className="text-sky-600" size={24} />
                 </div>
@@ -641,8 +680,44 @@ export default function IslemlerDemo() {
              </div>
              <div className="flex p-4 gap-4">
                <button onClick={() => setCheckModal(null)} className="flex-1 py-3 bg-white border border-neutral-300 transition-colors hover:bg-neutral-50">VAZGEÇ</button>
-               {/* Buton rengi ana tema rengi */}
                <button onClick={confirmCheckToggle} className="flex-1 py-3 bg-neutral-900 text-white hover:bg-neutral-800 transition-colors">ONAYLA</button>
+             </div>
+           </div>
+        </div>
+      )}
+
+      {/* KAYIT BİLGİSİ (INFO) MODALI */}
+      {infoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+           <div className="bg-white border border-neutral-200 shadow-2xl w-full max-w-md p-0 overflow-hidden relative">
+             <button onClick={() => setInfoModal(null)} className="absolute top-4 right-4 text-blue-500 hover:text-blue-900 transition-colors"><X size={20} /></button>
+             <div className="bg-blue-50 p-6 border-b border-blue-100 text-center">
+                <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                  <Info className="text-blue-600" size={24} />
+                </div>
+                <h3 className="text-lg font-light text-neutral-900 tracking-tight">KAYIT BİLGİSİ</h3>
+             </div>
+             <div className="p-6 space-y-4">
+               <div className="flex justify-between items-center border-b border-neutral-100 pb-2">
+                  <span className="text-xs font-bold text-neutral-400 tracking-wider">OLUŞTURULMA ZAMANI</span>
+                  <span className="text-sm font-medium text-neutral-800">
+                    {infoModal.created_at ? new Date(infoModal.created_at).toLocaleString('tr-TR') : 'Bilinmiyor'}
+                  </span>
+               </div>
+               <div className="flex justify-between items-center border-b border-neutral-100 pb-2">
+                  <span className="text-xs font-bold text-neutral-400 tracking-wider">İŞLEM YAPAN</span>
+                  <span className="text-sm font-medium text-neutral-800">
+                    {/* @ts-ignore */}
+                    {infoModal.kullanici_email || 'Sistem / Anonim'}
+                  </span>
+               </div>
+               <div className="flex justify-between items-center border-b border-neutral-100 pb-2">
+                  <span className="text-xs font-bold text-neutral-400 tracking-wider">KAYIT ID</span>
+                  <span className="text-xs font-mono text-neutral-500">{infoModal.id.substring(0, 13)}...</span>
+               </div>
+             </div>
+             <div className="p-4 bg-neutral-50 border-t border-neutral-100 flex justify-end">
+               <button onClick={() => setInfoModal(null)} className="px-6 py-2 bg-neutral-900 text-white hover:bg-neutral-800 transition-colors text-sm font-light tracking-wide">KAPAT</button>
              </div>
            </div>
         </div>

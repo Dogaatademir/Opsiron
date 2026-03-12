@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download, Search, PieChart, TrendingUp, TrendingDown, Filter } from 'lucide-react';
+import { Download, Search, PieChart, TrendingUp, TrendingDown, Building2, User } from 'lucide-react';
 import { CustomSelect } from "../components/CustomSelect";
 import { useData } from "../context/DataContext";
 import jsPDF from 'jspdf';
@@ -25,14 +25,14 @@ const getTypeLabel = (tip: string, is_bitiminde: any) => {
 };
 
 export default function HesaplarDemo() {
-  // Projeler verisini de çektik
   const { kisiler, islemler, projeler } = useData();
   
   const [seciliKisi, setSeciliKisi] = useState("");
+  const [seciliProje, setSeciliProje] = useState("all"); // YENİ: Şantiye Filtresi
   const [query, setQuery] = useState("");
   const [isExporting, setIsExporting] = useState(false);
 
-  // --- KİŞİ LİSTESİ ---
+  // --- SEÇENEKLER ---
   const kisiOptions = useMemo(
     () => kisiler
       .map(k => ({ value: k.id, label: k.ad }))
@@ -40,19 +40,34 @@ export default function HesaplarDemo() {
     [kisiler]
   );
 
+  const projeOptions = useMemo(() => {
+    return [
+      { value: "all", label: "TÜM ŞANTİYELER (Kümülatif)" },
+      ...projeler.map((p) => ({ value: p.id, label: p.ad }))
+    ];
+  }, [projeler]);
+
+  // --- VERİ FİLTRELEME ---
   const personTransactions = useMemo(() => {
     if (!seciliKisi) return [];
-    return islemler.filter(h => h.kisi_id === seciliKisi);
-  }, [islemler, seciliKisi]);
+    
+    // Önce kişiye göre filtrele
+    let filtered = islemler.filter(h => h.kisi_id === seciliKisi);
+    
+    // Sonra şantiyeye göre filtrele (eğer "all" seçili değilse)
+    if (seciliProje !== "all") {
+        filtered = filtered.filter(h => h.proje_id === seciliProje);
+    }
+    
+    return filtered;
+  }, [islemler, seciliKisi, seciliProje]);
 
   const filteredRows = useMemo(() => {
     const qText = query.trim().toLocaleLowerCase("tr");
     if (!qText) return personTransactions;
     
     return personTransactions.filter(r => {
-      // Proje ismini de aramaya dahil et
       const projeAdi = projeler.find(p => p.id === r.proje_id)?.ad || "";
-      
       return (
         (r.aciklama || "").toLocaleLowerCase("tr").includes(qText) ||
         (r.tarih || "").includes(qText) ||
@@ -96,10 +111,11 @@ export default function HesaplarDemo() {
       const pageHeight = doc.internal.pageSize.getHeight();
       
       const kisiAdi = kisiler.find(k => k.id === seciliKisi)?.ad || "Bilinmeyen Kisi";
+      const projeAdi = seciliProje === "all" ? "Genel (Tüm Şantiyeler)" : (projeler.find(p => p.id === seciliProje)?.ad || "");
+      
       const bugun = new Date();
       const tarihStr = bugun.toLocaleDateString("tr-TR");
 
-      // 1. Türkçe Font Yükleme (Roboto)
       const fontUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf';
       const fontResponse = await fetch(fontUrl);
       if (!fontResponse.ok) throw new Error("Font yüklenemedi");
@@ -110,8 +126,6 @@ export default function HesaplarDemo() {
       doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
       doc.setFont("Roboto"); 
 
-      // --- TASARIM BAŞLANGICI ---
-      
       // 2. Üst Bilgi (Header)
       doc.setFontSize(18);
       doc.setTextColor(0, 0, 0); 
@@ -133,7 +147,7 @@ export default function HesaplarDemo() {
       doc.setLineWidth(0.2);
       doc.line(14, 32, pageWidth - 14, 32);
 
-      // 3. Müşteri Bilgisi
+      // 3. Müşteri & Şantiye Bilgisi
       doc.setFontSize(10);
       doc.setTextColor(80, 80, 80);
       doc.text("SAYIN:", 14, 42);
@@ -141,24 +155,28 @@ export default function HesaplarDemo() {
       doc.setFontSize(12);
       doc.setTextColor(0, 0, 0);
       doc.text(kisiAdi.toUpperCase(), 14, 48);
+      
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Şantiye: ${projeAdi}`, 14, 54);
 
       // 4. Tablo Hazırlığı
       const tableBody = filteredRows.map(r => [
         r.is_bitiminde && r.tip !== 'cek' ? "İş Bitimi" : formatDateDisplay(r.tarih),
-        projeler.find(p => p.id === r.proje_id)?.ad || "—", // Şantiye Bilgisi
+        projeler.find(p => p.id === r.proje_id)?.ad || "—",
         getTypeLabel(r.tip, r.is_bitiminde),
         r.aciklama || "—",
         r.tutar?.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " TL"
       ]);
 
       autoTable(doc, {
-        startY: 55,
-        head: [['TARİH', 'ŞANTİYE', 'İŞLEM TİPİ', 'AÇIKLAMA', 'TUTAR']], // Başlık Eklendi
+        startY: 62,
+        head: [['TARİH', 'ŞANTİYE', 'İŞLEM TİPİ', 'AÇIKLAMA', 'TUTAR']],
         body: tableBody,
         theme: 'plain', 
         styles: {
           font: "Roboto",
-          fontSize: 8, // Fontu bir tık küçülttüm sığması için
+          fontSize: 8,
           cellPadding: 3,
           textColor: [0, 0, 0],
           lineColor: [200, 200, 200],
@@ -174,9 +192,9 @@ export default function HesaplarDemo() {
         },
         columnStyles: {
           0: { cellWidth: 25 }, 
-          1: { cellWidth: 35 }, // Şantiye genişliği
+          1: { cellWidth: 35 }, 
           2: { cellWidth: 30 }, 
-          4: { halign: 'right', cellWidth: 35 } // Tutar
+          4: { halign: 'right', cellWidth: 35 } 
         },
         margin: { left: 14, right: 14 },
       });
@@ -258,7 +276,6 @@ export default function HesaplarDemo() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* HEADER */}
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between">
@@ -278,24 +295,35 @@ export default function HesaplarDemo() {
         {/* FİLTRE & SEÇİM */}
         <div className="bg-white p-8 border border-neutral-200 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
-            <div className="md:col-span-4">
+            <div className="md:col-span-3">
               <CustomSelect
                 label="KİŞİ / KURUM SEÇİMİ"
                 value={seciliKisi}
                 onChange={(val) => setSeciliKisi(val)}
                 options={kisiOptions}
                 placeholder="Seçiniz..."
-                icon={Filter}
+                icon={User}
+              />
+            </div>
+            
+            <div className="md:col-span-3">
+              <CustomSelect
+                label="ŞANTİYE FİLTRESİ"
+                value={seciliProje}
+                onChange={(val) => setSeciliProje(val)}
+                options={projeOptions}
+                placeholder="Şantiye Seçiniz..."
+                icon={Building2}
               />
             </div>
 
-            <div className="md:col-span-6">
+            <div className="md:col-span-4">
               <label className="block text-xs font-medium text-neutral-500 mb-3 tracking-wider">İŞLEM ARA</label>
               <div className="relative">
                 <input
                   type="text"
                   className="w-full h-14 pl-12 pr-4 bg-white border border-neutral-300 text-neutral-900 outline-none focus:border-neutral-900 font-light placeholder:text-neutral-300 transition-colors"
-                  placeholder="Açıklama, şantiye veya tutar..."
+                  placeholder="Açıklama veya tutar..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   disabled={!seciliKisi}
@@ -341,7 +369,6 @@ export default function HesaplarDemo() {
                     <td className="px-6 py-4 font-light text-neutral-600 whitespace-nowrap">
                        {r.is_bitiminde && r.tip !== 'cek' ? "—" : formatDateDisplay(r.tarih)}
                     </td>
-                    {/* YENİ SÜTUN: ŞANTİYE */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
                          {projeler.find(p => p.id === r.proje_id)?.ad || "GENEL"}
@@ -367,11 +394,11 @@ export default function HesaplarDemo() {
                 {filteredRows.length === 0 && (
                   <tr>
                     <td
-                      colSpan={5} // Colspan 5'e çıkarıldı
+                      colSpan={5}
                       className="p-12 text-center text-neutral-400 font-light italic"
                     >
                       {seciliKisi
-                        ? "Kayıt bulunamadı."
+                        ? "Bu şantiyede kişiye ait kayıt bulunamadı."
                         : "Lütfen yukarıdan bir kişi seçiniz."}
                     </td>
                   </tr>
@@ -380,7 +407,7 @@ export default function HesaplarDemo() {
             </table>
           </div>
 
-          {/* EKRAN ALTI ÖZET (SADECE EKRANDA GÖRÜNÜR) */}
+          {/* EKRAN ALTI ÖZET */}
           {seciliKisi && (
             <div className="bg-neutral-50 border-t border-neutral-200 p-6 grid grid-cols-2 lg:grid-cols-5 gap-6">
               <div>

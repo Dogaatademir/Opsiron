@@ -1,52 +1,37 @@
 import { useState } from "react";
 import { User, Lock, ArrowRight, Building2, AlertCircle } from "lucide-react";
+import { supabase } from "../context/DataContext"; 
 
-interface LoginPageProps {
-  onLogin: () => void;
-}
-
-export default function LoginPage({ onLogin }: LoginPageProps) {
+export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // .env dosyasından bilgileri alıyoruz
-  const ENV_USER = import.meta.env.VITE_ADMIN_USER;
-  const ENV_PASS = import.meta.env.VITE_ADMIN_PASS;
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    // Simüle edilmiş giriş gecikmesi
-    setTimeout(() => {
-      // 1. .env'de tanımlı değilse (Geliştirici uyarısı)
-      if (!ENV_USER || !ENV_PASS) {
-        setError("Sistem Hatası: .env dosyasında kullanıcı bilgileri tanımlanmamış.");
-        setLoading(false);
-        return;
-      }
+    // Kullanıcı adının sonuna gizlice domain ekliyoruz
+    const formattedEmail = `${username.trim().toLowerCase()}@aycan.local`;
 
-      // 2. Doğrulama Kontrolü
-      if (username === ENV_USER && password === ENV_PASS) {
-        // BAŞARILI
-        setLoading(false);
-        onLogin();
-      } else {
-        // HATALI
-        setError("Hatalı kullanıcı adı veya şifre.");
-        setLoading(false);
-      }
-    }, 800);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: formattedEmail,
+      password,
+    });
+
+    if (error) {
+      setError("Hatalı kullanıcı adı veya şifre.");
+      setLoading(false);
+    }
+    // Başarılı girişte state değişimi App.tsx tarafından yakalanacak
   };
 
   return (
     <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-6">
       <div className="w-full max-w-md bg-white p-10 shadow-2xl border-t-4 border-neutral-500 relative">
         
-        {/* Logo & Başlık */}
         <div className="flex flex-col items-center mb-10">
           <div className="w-16 h-16 bg-neutral-900 text-white flex items-center justify-center rounded-full mb-4 shadow-lg">
             <Building2 size={32} strokeWidth={1.5} />
@@ -55,7 +40,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           <p className="text-sm text-neutral-400 font-light mt-1">Finans Paneli Girişi</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleLogin} className="space-y-6">
           {error && (
             <div className="bg-red-50 text-red-600 text-xs p-3 flex items-center gap-2 border border-red-100">
@@ -73,6 +57,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full h-14 pl-12 pr-4 bg-neutral-50 border border-neutral-200 text-neutral-900 outline-none focus:border-neutral-900 focus:bg-white transition-all font-light"
                 placeholder="Kullanıcı adınız..."
+                required
               />
               <User className="absolute left-4 top-4 text-neutral-400" size={20} />
             </div>
@@ -87,6 +72,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full h-14 pl-12 pr-4 bg-neutral-50 border border-neutral-200 text-neutral-900 outline-none focus:border-neutral-900 focus:bg-white transition-all font-light"
                 placeholder="••••••••"
+                required
               />
               <Lock className="absolute left-4 top-4 text-neutral-400" size={20} />
             </div>
@@ -108,7 +94,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         </form>
 
         <div className="mt-8 pt-6 border-t border-neutral-100 text-center">
-          <p className="text-[10px] text-neutral-400 uppercase tracking-widest">Powered by CraftOps</p>
+          <p className="text-[10px] text-neutral-400 uppercase tracking-widest">Powered by Opsiron</p>
         </div>
       </div>
     </div>

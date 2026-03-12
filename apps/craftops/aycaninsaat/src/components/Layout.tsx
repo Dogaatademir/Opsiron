@@ -77,11 +77,7 @@ export default function Layout() {
             <h1 className="text-2xl font-bold text-neutral-900 tracking-tight leading-none">
                 Aycan<br/>İnşaat
             </h1>
-            <div className="mt-4 pt-3 border-t border-neutral-100 w-full">
-               <p className="text-[9px] text-neutral-400 font-medium tracking-wide">
-                 Powered by <span className="text-neutral-600 font-bold">CraftOps</span>
-               </p>
-            </div>
+      
           </div>
           <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-1 text-neutral-400 hover:bg-neutral-100">
             <X size={24} strokeWidth={1.5} />
@@ -113,11 +109,8 @@ export default function Layout() {
                 <h1 className="text-2xl font-bold text-neutral-900 tracking-tight leading-none">
                 Aycan<br/>İnşaat
             </h1>
-            <div className="mt-4 pt-3 border-t border-neutral-100 w-full">
-               <p className="text-[9px] text-neutral-400 font-medium tracking-wide">
-                 Powered by <span className="text-neutral-600 font-bold">CraftOps</span>
-               </p>
-            </div>  </div>
+           
+             </div>
           </div>
         </header>
 
