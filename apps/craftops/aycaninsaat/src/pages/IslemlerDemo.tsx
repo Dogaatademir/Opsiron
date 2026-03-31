@@ -43,11 +43,14 @@ const DOVIZ_OPTIONS = [
   { value: "ALTIN", label: "ALTIN" },
 ];
 
+const DOVIZ_SEMBOL: Record<string, string> = { TRY: "₺", USD: "$", EUR: "€", ALTIN: "gr" };
+
 const INITIAL_FORM = {
   id: "",
   tarih: "",
   tip: "",
   tutar: "",
+  kur: "1", // YENİ EKLENDİ
   kisi_id: "",
   proje_id: "",
   aciklama: "",
@@ -61,20 +64,16 @@ export default function IslemlerDemo() {
   const [form, setForm] = useState<any>(INITIAL_FORM);
   const [editForm, setEditForm] = useState<any>(null);
   
-  // Arama ve Filtreleme State'leri
   const [query, setQuery] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   
-  // Sayfalandırma State'i
   const [visibleCount, setVisibleCount] = useState(50);
   
-  // Modallar için State'ler
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [checkModal, setCheckModal] = useState<{ item: Islem; newStatus: number; message: string } | null>(null);
   const [infoModal, setInfoModal] = useState<Islem | null>(null);
 
-  // Autocomplete (Öneri) State'leri
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestionRef = useRef<HTMLDivElement>(null);
@@ -99,13 +98,6 @@ export default function IslemlerDemo() {
       .filter((desc): desc is string => typeof desc === 'string' && desc.trim().length > 0);
     return Array.from(new Set(allDescs));
   }, [islemler]);
-
-  const getExchangeRate = (currency: string) => {
-    if (currency === "USD") return 34.50;
-    if (currency === "EUR") return 37.20;
-    if (currency === "ALTIN") return 2950;
-    return 1;
-  };
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -133,15 +125,22 @@ export default function IslemlerDemo() {
     setShowSuggestions(false);
   };
 
+  // --- İŞLEM KAYIT ETME ---
   const saveCreate = async () => {
     try {
       if (!form.kisi_id || !form.tip || !form.tutar) return alert("Eksik bilgi: Kişi, Tip ve Tutar zorunludur.");
       if (!form.proje_id) return alert("Lütfen şantiye seçiniz.");
 
+      // KUR KONTROLÜ
+      const dovizKur = form.doviz === "TRY" ? 1 : parseFloat(form.kur);
+      if (form.doviz !== "TRY" && (!form.kur || dovizKur <= 0)) {
+         return alert("Lütfen geçerli bir döviz kuru giriniz.");
+      }
+
       setIsSubmitting(true);
 
       const amountRaw = toAmount(form.tutar);
-      const amountTL = amountRaw * getExchangeRate(form.doviz);
+      const amountTL = Number((amountRaw * dovizKur).toFixed(2));
 
       if (form.tip === "cek" && !form.tarih) {
         setIsSubmitting(false);
@@ -180,10 +179,14 @@ export default function IslemlerDemo() {
   };
 
   const startEdit = (r: Islem) => {
+    // ESKİ KUR HESAPLAMA MANTIĞI: (Tutar TL / Tutar Raw)
+    const calculatedKur = (r.doviz && r.doviz !== 'TRY' && r.tutar_raw && r.tutar_raw > 0) ? (r.tutar / r.tutar_raw).toFixed(2) : "1";
+    
     setEditForm({
       ...r,
       tarih: r.tarih || "",
-      tutar: formatTR(r.tutar_raw),
+      tutar: formatTR(r.tutar_raw ? r.tutar_raw : r.tutar),
+      kur: calculatedKur, // BULUNAN ESKİ KURU YAZ
       is_bitiminde: r.is_bitiminde === 1,
       proje_id: r.proje_id || "" 
     });
@@ -195,8 +198,14 @@ export default function IslemlerDemo() {
       if (!editForm.kisi_id || !editForm.tip || !editForm.tutar) return alert("Eksik bilgi");
       if (!editForm.proje_id) return alert("Lütfen şantiye seçiniz.");
 
+      // KUR KONTROLÜ (DÜZENLEME)
+      const dovizKur = editForm.doviz === "TRY" ? 1 : parseFloat(editForm.kur);
+      if (editForm.doviz !== "TRY" && (!editForm.kur || dovizKur <= 0)) {
+         return alert("Lütfen geçerli bir döviz kuru giriniz.");
+      }
+
       const amountRaw = toAmount(editForm.tutar);
-      const amountTL = amountRaw * getExchangeRate(editForm.doviz);
+      const amountTL = Number((amountRaw * dovizKur).toFixed(2));
 
       const updatedRow: Islem = {
         id: editForm.id,
@@ -220,7 +229,7 @@ export default function IslemlerDemo() {
 
     } catch (error) {
       console.error("Güncelleme hatası:", error);
-      alert("Güncelleme sırasında hata oluştu: " + (error instanceof Error ? error.message : "Bilinmeyen hata"));
+      alert("Güncelleme sırasında hata oluştu.");
     }
   };
 
@@ -267,7 +276,6 @@ export default function IslemlerDemo() {
     
     return islemler
       .filter((r) => {
-        // 1. Metin Araması
         let textMatch = true;
         if (query) {
           const kisi = kisiler.find(k => k.id === r.kisi_id);
@@ -281,13 +289,11 @@ export default function IslemlerDemo() {
           textMatch = kisiAdi.includes(lowerQuery) || projeAdi.includes(lowerQuery) || aciklama.includes(lowerQuery) || tip.includes(lowerQuery);
         }
 
-        // 2. Tarih Filtrelemesi
         let dateMatch = true;
         if (r.tarih) {
           if (startDate && r.tarih < startDate) dateMatch = false;
           if (endDate && r.tarih > endDate) dateMatch = false;
         } else if (startDate || endDate) {
-           // Tarih filtresi aktifse ve işlemin tarihi yoksa (is_bitiminde vb.) gizle
            dateMatch = false;
         }
 
@@ -296,7 +302,6 @@ export default function IslemlerDemo() {
       .sort((a, b) => (b.tarih || "").localeCompare(a.tarih || ""));
   }, [islemler, kisiler, projeler, query, startDate, endDate]);
 
-  // Sayfalandırma (Pagination) için görünen veriyi kesiyoruz
   const displayedData = filtered.slice(0, visibleCount);
 
   const formKisiOptions = useMemo(() => {
@@ -357,7 +362,6 @@ export default function IslemlerDemo() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         
-        {/* YENİLENMİŞ FORM DÜZENİ */}
         <div className="bg-white p-8 border border-neutral-200 mb-8 shadow-sm">
           <div className="flex items-center gap-3 mb-8 border-b border-neutral-100 pb-4">
             <div className="w-8 h-8 rounded-full bg-neutral-900 flex items-center justify-center">
@@ -367,7 +371,6 @@ export default function IslemlerDemo() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-            {/* SOL: PROJE & KİŞİ BİLGİLERİ */}
             <div className="space-y-6">
                <h3 className="text-xs font-bold text-neutral-400 tracking-wider">PROJE VE KİŞİ BİLGİLERİ</h3>
                <CustomSelect 
@@ -411,7 +414,6 @@ export default function IslemlerDemo() {
                 </div>
             </div>
 
-            {/* SAĞ: FİNANSAL DETAYLAR */}
             <div className="space-y-6">
                <h3 className="text-xs font-bold text-neutral-400 tracking-wider">FİNANSAL DETAYLAR</h3>
                <div className="grid grid-cols-2 gap-4">
@@ -442,13 +444,25 @@ export default function IslemlerDemo() {
                   </div>
                </div>
 
-               <div className="flex gap-4">
-                  <div className="flex-1">
+               {/* YENİ NESİL KUR VE DÖVİZ ALANI */}
+               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                  <div className="md:col-span-6">
                      <label className="block text-xs font-medium text-neutral-500 mb-3 tracking-wider">TUTAR</label>
                      <input className="w-full h-14 px-4 border border-neutral-300 text-neutral-900 outline-none focus:border-neutral-900 font-light placeholder:text-neutral-300 transition-colors" value={form.tutar} onChange={(e) => setForm({ ...form, tutar: e.target.value })} onBlur={() => setForm({ ...form, tutar: formatTR(form.tutar) })} placeholder="0,00" />
                   </div>
-                  <div className="w-32">
-                    <CustomSelect label="DÖVİZ" value={form.doviz} onChange={(val) => setForm({ ...form, doviz: val })} options={DOVIZ_OPTIONS} placeholder="Seç" />
+                  <div className="md:col-span-3">
+                    <CustomSelect label="DÖVİZ" value={form.doviz} onChange={(val) => setForm({ ...form, doviz: val, kur: val === 'TRY' ? '1' : form.kur })} options={DOVIZ_OPTIONS} placeholder="Seç" />
+                  </div>
+                  <div className="md:col-span-3">
+                     <label className="block text-xs font-medium text-neutral-500 mb-3 tracking-wider truncate">KUR {form.doviz !== 'TRY' && '*'}</label>
+                     <input 
+                        type="number" 
+                        className="w-full h-14 px-4 border border-neutral-300 text-neutral-900 outline-none focus:border-neutral-900 font-light disabled:bg-neutral-100 disabled:text-neutral-400 transition-colors appearance-none" 
+                        value={form.kur} 
+                        onChange={(e) => setForm({ ...form, kur: e.target.value })} 
+                        disabled={form.doviz === 'TRY'} 
+                        placeholder="Örn: 34.50" 
+                     />
                   </div>
                </div>
 
@@ -462,7 +476,6 @@ export default function IslemlerDemo() {
         </div>
 
         <div className="bg-white border border-neutral-200 shadow-sm">
-            {/* YENİLENMİŞ GELİŞMİŞ FİLTRE BÖLÜMÜ */}
             <div className="p-4 border-b border-neutral-100 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between bg-neutral-50/50">
                <div className="flex flex-wrap gap-4 items-center flex-1">
                   <div className="flex items-center gap-2">
@@ -484,7 +497,6 @@ export default function IslemlerDemo() {
             </div>
 
             <div className="w-full overflow-x-auto">
-                {/* min-w-[950px] yerine responsif ve daha dar bir minimum genişlik atandı */}
                 <table className="w-full text-left min-w-[700px] lg:min-w-full">
                   <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
@@ -505,13 +517,16 @@ export default function IslemlerDemo() {
                           </td>
                         </tr>
                      ) : (
-                       displayedData.map((r) => (
+                       displayedData.map((r) => {
+                          const rawVal = r.tutar_raw ? Number(r.tutar_raw) : Number(r.tutar);
+                          const dvz = r.doviz || "TRY";
+                          
+                          return (
                           <tr key={r.id} className="hover:bg-neutral-50 group transition-colors">
                              <td className="px-6 py-5 font-light text-neutral-600 whitespace-nowrap">
                                 {r.is_bitiminde && r.tip !== 'cek' ? "—" : formatDateDisplay(r.tarih)}
                              </td>
                              <td className="px-6 py-5">
-                                {/* whitespace-nowrap kaldırıldı, uzun şantiye isimleri alt satıra geçebilir */}
                                 <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider block">
                                   {projeler.find(p => p.id === r.proje_id)?.ad || "GENEL"}
                                 </span>
@@ -522,19 +537,19 @@ export default function IslemlerDemo() {
                                 </span>
                              </td>
                              <td className="px-6 py-5 text-right font-mono text-neutral-900 whitespace-nowrap">
-                                {Number(r.tutar).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺
-                                {r.doviz !== "TRY" && (
-                                  <div className="text-[10px] text-neutral-400 mt-1">
-                                    ({Number(r.tutar_raw).toLocaleString()} {r.doviz})
+                                <div className="font-medium text-[15px]">
+                                   {rawVal.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} {DOVIZ_SEMBOL[dvz] || dvz}
+                                </div>
+                                {dvz !== "TRY" && (
+                                  <div className="text-[10px] text-neutral-400 mt-0.5">
+                                    ({Number(r.tutar).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺)
                                   </div>
                                 )}
                              </td>
                              <td className="px-6 py-5 font-light text-neutral-600 min-w-[120px]">
-                                {/* whitespace-nowrap kaldırıldı */}
                                 {kisiler.find((k) => k.id === r.kisi_id)?.ad || "Bilinmiyor"}
                              </td>
                              <td className="px-6 py-5 font-light text-neutral-500 min-w-[180px]">
-                                {/* whitespace-nowrap kaldırıldı, truncate opsiyonel tutuldu */}
                                 {r.aciklama}
                              </td>
                              <td className="px-6 py-5 text-center whitespace-nowrap">
@@ -560,13 +575,12 @@ export default function IslemlerDemo() {
                                </div>
                              </td>
                           </tr>
-                       ))
+                       )})
                      )}
                   </tbody>
                 </table>
             </div>
 
-            {/* YENİ: DAHA FAZLA GÖSTER / SAYFALANDIRMA BUTONU */}
             {filtered.length > visibleCount && (
               <div className="p-6 border-t border-neutral-100 bg-neutral-50 flex justify-center">
                 <button 
@@ -582,7 +596,6 @@ export default function IslemlerDemo() {
 
       {editForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-           {/* ... Edit Modalı İçeriği Aynı Bırakıldı (Sadece tasarım tutarlılığı sağlandı) ... */}
            <div className="bg-white border border-neutral-200 shadow-2xl w-full max-w-5xl overflow-hidden max-h-[90vh] overflow-y-auto">
              <div className="flex items-center justify-between p-6 border-b border-neutral-100 bg-neutral-50">
                  <div className="flex items-center gap-3">
@@ -625,17 +638,27 @@ export default function IslemlerDemo() {
                    />
                  </div>
 
-                 <div className="md:col-span-6 flex gap-3">
-                    <div className="flex-1">
+                 <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-6">
                       <label className="block text-xs font-medium text-neutral-500 mb-3 tracking-wider">TUTAR</label>
                       <input className="w-full h-14 px-4 border border-neutral-300 outline-none font-light" value={editForm.tutar} onChange={(e) => setEditForm({...editForm, tutar: e.target.value})} onBlur={() => setEditForm({...editForm, tutar: formatTR(editForm.tutar)})} />
                     </div>
-                    <div className="w-32">
-                        <CustomSelect label="DÖVİZ" value={editForm.doviz} onChange={(val) => setEditForm({...editForm, doviz: val})} options={DOVIZ_OPTIONS} placeholder="Seç" />
+                    <div className="md:col-span-3">
+                        <CustomSelect label="DÖVİZ" value={editForm.doviz} onChange={(val) => setEditForm({...editForm, doviz: val, kur: val === 'TRY' ? '1' : editForm.kur})} options={DOVIZ_OPTIONS} placeholder="Seç" />
+                    </div>
+                    <div className="md:col-span-3">
+                       <label className="block text-xs font-medium text-neutral-500 mb-3 tracking-wider truncate">KUR {editForm.doviz !== 'TRY' && '*'}</label>
+                       <input 
+                          type="number" 
+                          className="w-full h-14 px-4 border border-neutral-300 text-neutral-900 outline-none focus:border-neutral-900 font-light disabled:bg-neutral-100 disabled:text-neutral-400 transition-colors appearance-none" 
+                          value={editForm.kur} 
+                          onChange={(e) => setEditForm({ ...editForm, kur: e.target.value })} 
+                          disabled={editForm.doviz === 'TRY'} 
+                       />
                     </div>
                  </div>
 
-                 <div className="md:col-span-6">
+                 <div className="md:col-span-12">
                     <label className="block text-xs font-medium text-neutral-500 mb-3 tracking-wider">AÇIKLAMA</label>
                     <input className="w-full h-14 px-4 border border-neutral-300 outline-none font-light" value={editForm.aciklama} onChange={(e) => setEditForm({...editForm, aciklama: e.target.value})} />
                  </div>
@@ -650,7 +673,6 @@ export default function IslemlerDemo() {
         </div>
       )}
 
-      {/* SİLME MODALI */}
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
            <div className="bg-white border border-neutral-200 shadow-2xl w-full max-w-md p-0 overflow-hidden">
@@ -667,7 +689,6 @@ export default function IslemlerDemo() {
         </div>
       )}
 
-      {/* ÇEK DURUM DEĞİŞTİRME MODALI */}
       {checkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
            <div className="bg-white border border-neutral-200 shadow-2xl w-full max-w-md p-0 overflow-hidden">
@@ -686,7 +707,6 @@ export default function IslemlerDemo() {
         </div>
       )}
 
-      {/* KAYIT BİLGİSİ (INFO) MODALI */}
       {infoModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
            <div className="bg-white border border-neutral-200 shadow-2xl w-full max-w-md p-0 overflow-hidden relative">
@@ -723,7 +743,6 @@ export default function IslemlerDemo() {
         </div>
       )}
 
-      {/* DİNAMİK BİLDİRİM (TOAST) */}
       {showSuccess && (
         <div className="fixed bottom-6 right-6 z-[60] bg-neutral-900 text-white px-6 py-4 rounded shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-bottom-5 duration-300">
           <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center">

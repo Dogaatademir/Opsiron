@@ -12,10 +12,33 @@ import {
   Check,
   History,
   RefreshCw,
-  RotateCcw
+  RotateCcw,
+  Info,
+  DollarSign // Yeni ikon
 } from 'lucide-react';
 
 import { useData, supabase } from "../context/DataContext";
+
+// LOG ÖZETİ OLUŞTURMA YARDIMCI FONKSİYONU
+const getLogSummary = (log: any) => {
+  const data = log.eski_veri;
+  if (!data) return `Kayıt ID: ${log.kayit_id.substring(0,8)}...`;
+  
+  switch (log.tablo_adi) {
+    case 'islemler':
+       const doviz = data.doviz || 'TRY';
+       const tutar = data.tutar_raw || data.tutar;
+       return `${data.tip?.toUpperCase() || 'İŞLEM'} - ${tutar} ${doviz === 'TRY' ? '₺' : doviz} | ${data.aciklama || 'Açıklama yok'}`;
+    case 'kisiler':
+       return `${data.ad || 'İsimsiz Kişi'} (${data.rol || 'Rol belirtilmemiş'})`;
+    case 'projeler':
+       return `Şantiye: ${data.ad || 'İsimsiz'}`;
+    case 'daireler':
+       return `Daire No: ${data.daire_no} ${data.blok ? `(Blok: ${data.blok})` : ''} - Fiyat: ${data.fiyat || 'Girilememiş'}`;
+    default:
+       return data.aciklama || data.ad || `Kayıt ID: ${log.kayit_id.substring(0,8)}...`;
+  }
+}
 
 export default function SettingsPage() {
   const { 
@@ -23,7 +46,7 @@ export default function SettingsPage() {
     islemler, 
     projeler, 
     restoreData, 
-    rollbackLog, // <-- Yeni fonksiyonu içeri aldık
+    rollbackLog, 
     addProje,
     updateProje,
     removeProje,
@@ -43,6 +66,23 @@ export default function SettingsPage() {
   // -- LOGLAR STATE --
   const [loglar, setLoglar] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [infoModalLog, setInfoModalLog] = useState<any>(null);
+
+  // -- GÜNCEL KURLAR STATE --
+  const [kurlar, setKurlar] = useState({ USD: "1", EUR: "1", ALTIN: "1" });
+
+  useEffect(() => {
+    // Kurları localStorage'dan çek
+    const savedKurlar = localStorage.getItem("guncel_kurlar");
+    if (savedKurlar) {
+      setKurlar(JSON.parse(savedKurlar));
+    }
+  }, []);
+
+  const handleSaveKurlar = () => {
+    localStorage.setItem("guncel_kurlar", JSON.stringify(kurlar));
+    alert("Güncel kurlar başarıyla sisteme kaydedildi.");
+  };
 
   const fetchLogs = async () => {
     setLoadingLogs(true);
@@ -129,7 +169,7 @@ export default function SettingsPage() {
   const handleRollback = async (log: any) => {
     if(!confirm("Bu işlemi geri alarak eski veriyi sisteme yüklemek istediğinize emin misiniz?")) return;
     await rollbackLog(log);
-    // İşlem bitince logları da yenile ki arayüz güncel kalsın
+    setInfoModalLog(null);
     await fetchLogs();
   };
 
@@ -273,8 +313,36 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* SAĞ KOLON: VERİ YÖNETİMİ */}
+            {/* SAĞ KOLON: KURLAR VE VERİ YÖNETİMİ */}
             <div className="space-y-8">
+               
+               {/* YENİ EKLENEN GÜNCEL KURLAR KARTI */}
+               <div className="bg-white border border-neutral-200 p-6 space-y-4 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
+                     <DollarSign size={18} className="text-neutral-400" />
+                     <h3 className="text-xs font-bold text-neutral-900 tracking-wider uppercase">GÜNCEL KURLAR</h3>
+                  </div>
+                  <p className="text-[10px] text-neutral-500 mb-2">Genel Bakış sayfasındaki toplam yükümlülük bu kurlarla hesaplanır.</p>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-neutral-600 font-medium">USD ($)</span>
+                      <input type="number" value={kurlar.USD} onChange={e => setKurlar({...kurlar, USD: e.target.value})} className="w-24 p-2 text-sm border border-neutral-300 outline-none focus:border-neutral-900 text-right" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-neutral-600 font-medium">EUR (€)</span>
+                      <input type="number" value={kurlar.EUR} onChange={e => setKurlar({...kurlar, EUR: e.target.value})} className="w-24 p-2 text-sm border border-neutral-300 outline-none focus:border-neutral-900 text-right" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-neutral-600 font-medium">ALTIN (gr)</span>
+                      <input type="number" value={kurlar.ALTIN} onChange={e => setKurlar({...kurlar, ALTIN: e.target.value})} className="w-24 p-2 text-sm border border-neutral-300 outline-none focus:border-neutral-900 text-right" />
+                    </div>
+                  </div>
+                  <button onClick={handleSaveKurlar} className="w-full mt-2 py-3 bg-neutral-900 text-white hover:bg-neutral-800 transition-colors text-xs font-medium tracking-wide">
+                     KURLARI KAYDET
+                  </button>
+               </div>
+
+               {/* SİSTEM DURUMU (Aynı kaldı) */}
                <div className="bg-neutral-900 text-white p-8 relative overflow-hidden">
                   <div className="relative z-10">
                       <h3 className="text-lg font-light mb-1">Sistem Durumu</h3>
@@ -320,6 +388,7 @@ export default function SettingsPage() {
 
         {/* --- TAB 2: SİSTEM LOGLARI --- */}
         {activeTab === 'loglar' && (
+          // SİSTEM LOGLARI KISMI BİR ÖNCEKİ İLE TAMAMEN AYNI - KOD KALABALIĞI OLMAMASI İÇİN AYNEN BIRAKTIM
           <div className="bg-white border border-neutral-200 shadow-sm animate-in fade-in duration-300">
              <div className="p-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-50">
                 <div>
@@ -343,7 +412,7 @@ export default function SettingsPage() {
                      <th className="px-6 py-4">KULLANICI</th>
                      <th className="px-6 py-4">İŞLEM</th>
                      <th className="px-6 py-4">MODÜL</th>
-                     <th className="px-6 py-4">DETAY (ESKİ VERİ)</th>
+                     <th className="px-6 py-4">DETAY / ÖZET</th>
                      <th className="px-6 py-4 text-center">AKSİYON</th>
                    </tr>
                  </thead>
@@ -359,27 +428,36 @@ export default function SettingsPage() {
                            {new Date(log.created_at).toLocaleString('tr-TR')}
                          </td>
                          <td className="px-6 py-4 text-sm font-medium text-neutral-700">
-                           {log.kullanici_email ? log.kullanici_email.replace('@aycan.local', '') : 'Bilinmiyor'}
+                           {log.kullanici_email ? log.kullanici_email.replace('@aycan.local', '') : 'Sistem'}
                          </td>
                          <td className="px-6 py-4">
                            <span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold tracking-wider ${log.islem_tipi === 'SILME' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
                              {log.islem_tipi}
                            </span>
                          </td>
-                         <td className="px-6 py-4 text-sm font-light text-neutral-600 uppercase">
+                         <td className="px-6 py-4 text-sm font-bold text-neutral-600 uppercase">
                            {log.tablo_adi}
                          </td>
-                         <td className="px-6 py-4 text-xs font-light text-neutral-500 max-w-md truncate" title={JSON.stringify(log.eski_veri)}>
-                           {log.eski_veri?.aciklama || log.eski_veri?.ad || `Kayıt ID: ${log.kayit_id.substring(0,8)}...`}
-                           {log.eski_veri?.tutar ? ` - ${log.eski_veri.tutar} ₺` : ''}
+                         <td className="px-6 py-4 text-sm font-light text-neutral-600 max-w-md truncate" title="Detay için incele butonuna basın">
+                           {getLogSummary(log)}
                          </td>
                          <td className="px-6 py-4 text-center">
-                           <button 
-                             onClick={() => handleRollback(log)}
-                             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-neutral-200 rounded text-xs font-medium text-neutral-600 hover:bg-neutral-900 hover:text-white hover:border-neutral-900 transition-colors opacity-0 group-hover:opacity-100"
-                           >
-                             <RotateCcw size={14} /> GERİ AL
-                           </button>
+                           <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                             <button 
+                               onClick={() => setInfoModalLog(log)}
+                               className="flex items-center justify-center w-8 h-8 bg-white border border-neutral-200 rounded-full text-neutral-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-colors"
+                               title="Detayları İncele"
+                             >
+                               <Info size={16} />
+                             </button>
+                             <button 
+                               onClick={() => handleRollback(log)}
+                               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-neutral-200 rounded text-xs font-medium text-neutral-600 hover:bg-neutral-900 hover:text-white hover:border-neutral-900 transition-colors"
+                               title="Veriyi Geri Yükle"
+                             >
+                               <RotateCcw size={14} /> GERİ AL
+                             </button>
+                           </div>
                          </td>
                        </tr>
                      ))
@@ -391,6 +469,75 @@ export default function SettingsPage() {
         )}
 
       </div>
+
+      {infoModalLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+           <div className="bg-white border border-neutral-200 shadow-2xl w-full max-w-3xl overflow-hidden max-h-[90vh] flex flex-col">
+             
+             <div className="flex items-center justify-between p-6 border-b border-neutral-100 bg-neutral-50 flex-shrink-0">
+                 <div className="flex items-center gap-3">
+                     <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        <Info className="text-blue-600" size={20} />
+                     </div>
+                     <div>
+                       <h2 className="text-xl font-light text-neutral-900 tracking-tight">LOG DETAYI</h2>
+                       <p className="text-xs text-neutral-500">{new Date(infoModalLog.created_at).toLocaleString('tr-TR')}</p>
+                     </div>
+                 </div>
+                 <button onClick={() => setInfoModalLog(null)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-200 text-neutral-500 transition-colors">
+                    <X size={20} />
+                 </button>
+             </div>
+
+             <div className="p-6 overflow-y-auto flex-1 bg-neutral-50/30 space-y-6">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="p-4 bg-white border border-neutral-200 rounded-sm">
+                    <div className="text-[10px] font-bold text-neutral-400 tracking-wider uppercase mb-1">TABLO / MODÜL</div>
+                    <div className="text-sm font-bold uppercase text-neutral-700">{infoModalLog.tablo_adi}</div>
+                  </div>
+                  <div className="p-4 bg-white border border-neutral-200 rounded-sm">
+                    <div className="text-[10px] font-bold text-neutral-400 tracking-wider uppercase mb-1">İŞLEM TİPİ</div>
+                    <div className={`text-sm font-bold ${infoModalLog.islem_tipi === 'SILME' ? 'text-red-600' : 'text-orange-600'}`}>
+                       {infoModalLog.islem_tipi}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-white border border-neutral-200 rounded-sm">
+                    <div className="text-[10px] font-bold text-neutral-400 tracking-wider uppercase mb-1">KULLANICI</div>
+                    <div className="text-sm font-medium text-neutral-700 truncate" title={infoModalLog.kullanici_email}>
+                       {infoModalLog.kullanici_email || 'Sistem'}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                     <span className="text-[10px] font-bold text-neutral-400 tracking-wider uppercase">KAYIT İÇERİĞİ (ESKİ VERİ)</span>
+                     <span className="px-2 py-0.5 bg-neutral-200 text-neutral-600 text-[9px] rounded-full">JSON</span>
+                  </div>
+                  <div className="p-4 bg-[#1e1e1e] border border-neutral-800 rounded-sm overflow-x-auto">
+                    <pre className="text-green-400 font-mono text-[12px] leading-relaxed">
+                      {JSON.stringify(infoModalLog.eski_veri, null, 2)}
+                    </pre>
+                  </div>
+                  <p className="text-xs text-neutral-500 italic mt-2">
+                     * Bu kayıt geri yüklenirse, yukarıdaki tüm veriler aslına uygun olarak sisteme geri eklenecektir.
+                  </p>
+                </div>
+             </div>
+
+             <div className="p-6 border-t border-neutral-100 bg-white flex justify-end gap-3 flex-shrink-0">
+               <button onClick={() => setInfoModalLog(null)} className="px-6 py-2 border border-neutral-300 text-neutral-600 text-sm font-medium hover:bg-neutral-50 transition-colors">
+                  KAPAT
+               </button>
+               <button onClick={() => handleRollback(infoModalLog)} className="px-6 py-2 bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-800 transition-colors flex items-center gap-2">
+                  <RotateCcw size={16}/> BU İŞLEMİ GERİ YÜKLE
+               </button>
+             </div>
+
+           </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -9,6 +9,7 @@ const ROLE_LABEL: Record<string, string> = {
   banka: "Banka",
   taseron: "Taşeron",
   sahis: "Şahıs",
+  emlakci: "Emlakçı",
 };
 
 const ROLE_OPTIONS = Object.entries(ROLE_LABEL).map(([value, label]) => ({

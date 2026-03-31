@@ -10,6 +10,16 @@ import {
 import { useData } from "../context/DataContext";
 import { CustomSelect } from "../components/CustomSelect";
 
+// DÖVİZ SEMBOLLERİ
+const DOVIZ_SEMBOL: Record<string, string> = { TRY: "₺", USD: "$", EUR: "€", ALTIN: "gr" };
+
+// PARA FORMATLAYICI (Tablolardaki döviz cinsiyle gösterim için)
+const formatMoney = (amount: number, dvz: string = "TRY") => {
+  const symbol = DOVIZ_SEMBOL[dvz] || dvz;
+  return amount.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + symbol;
+};
+
+// TEKİL TL FORMATLAYICI (Tepe özetleri için)
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("tr-TR", {
     style: "currency",
@@ -30,86 +40,126 @@ export default function BorcAlacakPage() {
     ];
   }, [projeler]);
 
-  // YENİ: Önce işlemleri şantiyeye göre filtrele
   const filteredIslemler = useMemo(() => {
     if (selectedProjeId === "all") return islemler;
     return islemler.filter(i => i.proje_id === selectedProjeId);
   }, [islemler, selectedProjeId]);
 
+  // LOCALSTORAGE'DAN GÜNCEL KURLARI ÇEK
+  const currentRates = useMemo(() => {
+    const saved = localStorage.getItem("guncel_kurlar");
+    const parsed = saved ? JSON.parse(saved) : {};
+    return {
+       TRY: 1,
+       USD: parseFloat(parsed.USD) || 1,
+       EUR: parseFloat(parsed.EUR) || 1,
+       ALTIN: parseFloat(parsed.ALTIN) || 1,
+    };
+  }, []);
+
   const report = useMemo(() => {
-    // 1. ÖDENMEMİŞ ÇEKLERİ HESAPLA (Filtrelenmiş işlemler üzerinden)
+    // 1. ÖDENMEMİŞ ÇEKLER
     const odenmemisCekler = filteredIslemler
       .filter(t => t.tip === 'cek' && t.is_bitiminde === 0)
       .sort((a, b) => (a.tarih || '').localeCompare(b.tarih || ''));
 
-    const totalOdenmemisCek = odenmemisCekler.reduce((sum, t) => sum + t.tutar, 0);
+    // 2. KİŞİ BAKİYELERİNİ DÖVİZ BAZLI HESAPLA
+    const bakiyeListesi: any[] = [];
 
-    // 2. KİŞİ BAKİYELERİNİ HESAPLA
-    const kisiBakiyeleri = kisiler.map(kisi => {
+    kisiler.forEach(kisi => {
       const personTransactions = filteredIslemler.filter(t => t.kisi_id === kisi.id);
+      if (personTransactions.length === 0) return;
 
-      const topOdenecek = personTransactions
-        .filter(t => t.tip === 'odenecek')
-        .reduce((sum, t) => sum + t.tutar, 0);
+      const dovizler = Array.from(new Set(personTransactions.map(t => t.doviz || "TRY")));
 
-      const topOdeme = personTransactions
-        .filter(t => t.tip === 'odeme' || t.tip === 'cek')
-        .reduce((sum, t) => sum + t.tutar, 0);
+      dovizler.forEach(dvz => {
+        const dvzIslemler = personTransactions.filter(t => (t.doviz || "TRY") === dvz);
+        const getAmount = (t: any) => Number(t.tutar_raw ? t.tutar_raw : t.tutar);
 
-      const topAlacak = personTransactions
-        .filter(t => t.tip === 'alacak')
-        .reduce((sum, t) => sum + t.tutar, 0);
-      
-      const topTahsilat = personTransactions
-        .filter(t => t.tip === 'tahsilat')
-        .reduce((sum, t) => sum + t.tutar, 0);
+        const topOdenecek = dvzIslemler.filter(t => t.tip === 'odenecek').reduce((sum, t) => sum + getAmount(t), 0);
+        const topOdeme = dvzIslemler.filter(t => t.tip === 'odeme' || t.tip === 'cek').reduce((sum, t) => sum + getAmount(t), 0);
+        const topAlacak = dvzIslemler.filter(t => t.tip === 'alacak').reduce((sum, t) => sum + getAmount(t), 0);
+        const topTahsilat = dvzIslemler.filter(t => t.tip === 'tahsilat').reduce((sum, t) => sum + getAmount(t), 0);
 
-      const kalanBorc = Math.max(0, topOdenecek - topOdeme);
-      const kalanAlacak = Math.max(0, topAlacak - topTahsilat);
+        const kalanBorc = Math.max(0, topOdenecek - topOdeme);
+        const kalanAlacak = Math.max(0, topAlacak - topTahsilat);
 
-      const dates = personTransactions
-        .filter(t => (t.tip === 'odenecek' || t.tip === 'alacak') && t.tarih)
-        .map(t => t.tarih as string)
-        .sort();
-      
-      const sonVade = dates.length > 0 ? dates[dates.length - 1] : null;
+        const dates = dvzIslemler
+          .filter(t => (t.tip === 'odenecek' || t.tip === 'alacak') && t.tarih)
+          .map(t => t.tarih as string)
+          .sort();
+        
+        const sonVade = dates.length > 0 ? dates[dates.length - 1] : null;
 
-      return {
-        kisi,
-        topOdenecek,
-        topOdeme,
-        kalanBorc,
-        topAlacak,
-        topTahsilat,
-        kalanAlacak,
-        sonVade
-      };
+        if (kalanBorc > 0 || kalanAlacak > 0) {
+          bakiyeListesi.push({
+            kisi,
+            doviz: dvz,
+            topOdenecek,
+            topOdeme,
+            kalanBorc,
+            topAlacak,
+            topTahsilat,
+            kalanAlacak,
+            sonVade
+          });
+        }
+      });
     });
 
-    const borcluListesi = kisiBakiyeleri
+    const borcluListesi = bakiyeListesi
       .filter(k => k.kalanBorc > 0)
       .sort((a, b) => b.kalanBorc - a.kalanBorc);
 
-    const alacakliListesi = kisiBakiyeleri
+    const alacakliListesi = bakiyeListesi
       .filter(k => k.kalanAlacak > 0)
       .sort((a, b) => b.kalanAlacak - a.kalanAlacak);
 
-    const totalKalanBorc = borcluListesi.reduce((sum, k) => sum + k.kalanBorc, 0);
-    const totalKalanAlacak = alacakliListesi.reduce((sum, k) => sum + k.kalanAlacak, 0);
+    // 3. GENEL TOPLAMLARI DÖVİZ BAZLI GRUPLA
+    const genelOzet: Record<string, { odenmemisCek: number, kalanBorc: number, kalanAlacak: number, netBeklenti: number }> = {};
     
-    // Net Beklenti Hesabı
-    const netBeklenti = totalKalanAlacak - totalKalanBorc - totalOdenmemisCek;
+    odenmemisCekler.forEach(cek => {
+        const dvz = cek.doviz || "TRY";
+        if (!genelOzet[dvz]) genelOzet[dvz] = { odenmemisCek: 0, kalanBorc: 0, kalanAlacak: 0, netBeklenti: 0 };
+        genelOzet[dvz].odenmemisCek += Number(cek.tutar_raw ? cek.tutar_raw : cek.tutar);
+    });
+
+    bakiyeListesi.forEach(b => {
+        const dvz = b.doviz;
+        if (!genelOzet[dvz]) genelOzet[dvz] = { odenmemisCek: 0, kalanBorc: 0, kalanAlacak: 0, netBeklenti: 0 };
+        genelOzet[dvz].kalanBorc += b.kalanBorc;
+        genelOzet[dvz].kalanAlacak += b.kalanAlacak;
+    });
+
+    Object.keys(genelOzet).forEach(dvz => {
+        genelOzet[dvz].netBeklenti = genelOzet[dvz].kalanAlacak - genelOzet[dvz].kalanBorc - genelOzet[dvz].odenmemisCek;
+    });
 
     return { 
         borcluListesi, 
         alacakliListesi, 
-        totalKalanBorc, 
-        totalKalanAlacak, 
-        netBeklenti,
         odenmemisCekler,
-        totalOdenmemisCek
+        genelOzet
     };
   }, [kisiler, filteredIslemler]);
+
+  // GÜNCEL KURLAR İLE TEKİL TL TOPLAMLARI
+  const totalsInTL = useMemo(() => {
+    let netBeklentiTL = 0;
+    let kalanAlacakTL = 0;
+    let kalanBorcTL = 0;
+    let odenmemisCekTL = 0;
+
+    Object.entries(report.genelOzet).forEach(([dvz, ozet]) => {
+      const rate = currentRates[dvz as keyof typeof currentRates] || 1;
+      netBeklentiTL += ozet.netBeklenti * rate;
+      kalanAlacakTL += ozet.kalanAlacak * rate;
+      kalanBorcTL += ozet.kalanBorc * rate;
+      odenmemisCekTL += ozet.odenmemisCek * rate;
+    });
+
+    return { netBeklentiTL, kalanAlacakTL, kalanBorcTL, odenmemisCekTL };
+  }, [report.genelOzet, currentRates]);
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-20">
@@ -140,38 +190,40 @@ export default function BorcAlacakPage() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         
-        {/* NET BEKLENTİ KARTI */}
-        <div className="mb-8 bg-white p-8 border border-neutral-200 shadow-sm flex items-center justify-between">
+        {/* NET BEKLENTİ KARTI (Güncel Kur TL Karşılığı) */}
+        <div className="mb-8 bg-white p-8 border border-neutral-200 shadow-sm flex items-start justify-between">
             <div>
                 <span className="text-xs font-bold text-neutral-400 tracking-wider uppercase">GENEL NET POZİSYON {selectedProjeId !== 'all' && `(${projeler.find(p=>p.id === selectedProjeId)?.ad})`}</span>
-                <div className="flex items-baseline gap-2 mt-2">
-                    <span className={`text-4xl font-light tracking-tight ${report.netBeklenti >= 0 ? 'text-neutral-900' : 'text-red-600'}`}>
-                        {report.netBeklenti > 0 ? '+' : ''}{formatCurrency(report.netBeklenti)}
-                    </span>
+                
+                <div className="flex items-baseline gap-2 mt-4">
+                  <span className={`text-4xl font-light tracking-tight ${totalsInTL.netBeklentiTL >= 0 ? 'text-neutral-900' : 'text-red-600'}`}>
+                    {totalsInTL.netBeklentiTL > 0 ? '+' : ''}{formatCurrency(totalsInTL.netBeklentiTL)}
+                  </span>
                 </div>
-                <p className="text-xs text-neutral-400 mt-2 font-light">
-                    (Alacaklar) - (Cari Borçlar) - (Ödenmemiş Çekler)
+                
+                <p className="text-[11px] text-neutral-400 mt-4 font-light">
+                    (Alacaklar) - (Cari Borçlar) - (Ödenmemiş Çekler) <br/><span className="italic opacity-80">(Dövizler ayarlardaki güncel kur üzerinden TL'ye çevrilmiştir)</span>
                 </p>
             </div>
-            <div className="w-16 h-16 rounded-full bg-neutral-900 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-neutral-900 flex items-center justify-center shrink-0">
                 <Wallet className="text-white" size={28} strokeWidth={1.5} />
             </div>
         </div>
 
         {/* --- ÖDENMEMİŞ ÇEKLER --- */}
         <div className="mb-8 bg-white border border-neutral-200 shadow-sm">
-            <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+            <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50 flex-wrap gap-4">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
                         <FileText size={14} className="text-orange-600" />
                     </div>
                     <div>
                         <h2 className="text-sm font-bold text-neutral-900 tracking-wider uppercase">ÖDENMEMİŞ ÇEKLER</h2>
-                        <p className="text-xs text-neutral-500 font-light mt-0.5">Vadesi gelmemiş veya tahsil edilmemiş çekler</p>
+                        <p className="text-[10px] text-neutral-500 font-light mt-0.5">Vadesi gelmemiş çeklerin güncel TL karşılığı</p>
                     </div>
                 </div>
-                <div className="text-xl font-light text-neutral-900">
-                    {formatCurrency(report.totalOdenmemisCek)}
+                <div className="text-xl font-light text-neutral-900 flex gap-4">
+                    <span>{formatCurrency(totalsInTL.odenmemisCekTL)}</span>
                 </div>
             </div>
             
@@ -197,8 +249,8 @@ export default function BorcAlacakPage() {
                                 <td className="px-6 py-4 text-[10px] font-bold text-neutral-400 uppercase">
                                     {projeler.find(p => p.id === cek.proje_id)?.ad || "-"}
                                 </td>
-                                <td className="px-6 py-4 text-sm font-medium text-neutral-900 text-right">
-                                    {formatCurrency(cek.tutar)}
+                                <td className="px-6 py-4 text-sm font-medium text-neutral-900 text-right whitespace-nowrap">
+                                    {formatMoney(Number(cek.tutar_raw ? cek.tutar_raw : cek.tutar), cek.doviz || "TRY")}
                                 </td>
                             </tr>
                         ))}
@@ -220,18 +272,18 @@ export default function BorcAlacakPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* --- SOL KOLON: ALACAKLAR --- */}
           <div className="bg-white border border-neutral-200 shadow-sm flex flex-col">
-            <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+            <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50 flex-wrap gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
                     <TrendingUp size={14} className="text-green-600" />
                 </div>
                 <div>
                     <h2 className="text-sm font-bold text-neutral-900 tracking-wider uppercase">CARİ ALACAKLAR</h2>
-                    <p className="text-xs text-neutral-500 font-light mt-0.5">Tahsil edilecekler</p>
+                    <p className="text-[10px] text-neutral-500 font-light mt-0.5">Toplam alacakların güncel TL karşılığı</p>
                 </div>
               </div>
-              <div className="text-xl font-light text-green-600">
-                {formatCurrency(report.totalKalanAlacak)}
+              <div className="text-xl font-light text-green-600 flex gap-4">
+                  <span>{formatCurrency(totalsInTL.kalanAlacakTL)}</span>
               </div>
             </div>
 
@@ -246,15 +298,18 @@ export default function BorcAlacakPage() {
                 </thead>
                 <tbody className="divide-y divide-neutral-50">
                     {report.alacakliListesi.map((row) => (
-                    <tr key={row.kisi.id} className="hover:bg-neutral-50 transition-colors group">
+                    <tr key={`${row.kisi.id}-${row.doviz}`} className="hover:bg-neutral-50 transition-colors group">
                         <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-neutral-100 text-neutral-600 flex items-center justify-center text-xs font-bold group-hover:bg-neutral-900 group-hover:text-white transition-colors">
+                            <div className="w-8 h-8 rounded-full bg-neutral-100 text-neutral-600 flex items-center justify-center text-xs font-bold group-hover:bg-neutral-900 group-hover:text-white transition-colors shrink-0">
                                 {row.kisi.ad.charAt(0)}
                             </div>
                             <div>
-                                <div className="text-sm font-medium text-neutral-900">{row.kisi.ad}</div>
-                                <div className="text-[10px] text-neutral-400 flex items-center gap-1 font-mono">
+                                <div className="text-sm font-medium text-neutral-900 flex items-center gap-2">
+                                  {row.kisi.ad}
+                                  {row.doviz !== 'TRY' && <span className="text-[10px] px-1.5 py-0.5 bg-neutral-200 text-neutral-700 rounded font-bold">{row.doviz}</span>}
+                                </div>
+                                <div className="text-[10px] text-neutral-400 flex items-center gap-1 font-mono mt-0.5">
                                     <CalendarClock size={10} /> {row.sonVade ? row.sonVade.split('-').reverse().join('.') : '-'}
                                 </div>
                             </div>
@@ -275,7 +330,7 @@ export default function BorcAlacakPage() {
                         </td>
                         <td className="px-6 py-4 text-right">
                         <div className="text-sm font-medium text-neutral-900 whitespace-nowrap">
-                            {formatCurrency(row.kalanAlacak)}
+                            {formatMoney(row.kalanAlacak, row.doviz)}
                         </div>
                         </td>
                     </tr>
@@ -295,18 +350,18 @@ export default function BorcAlacakPage() {
 
           {/* --- SAĞ KOLON: BORÇLAR --- */}
           <div className="bg-white border border-neutral-200 shadow-sm flex flex-col">
-            <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+            <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50 flex-wrap gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
                     <TrendingDown size={14} className="text-red-600" />
                 </div>
                 <div>
                     <h2 className="text-sm font-bold text-neutral-900 tracking-wider uppercase">CARİ BORÇLAR</h2>
-                    <p className="text-xs text-neutral-500 font-light mt-0.5">Ödenecek bakiyeler</p>
+                    <p className="text-[10px] text-neutral-500 font-light mt-0.5">Toplam borçların güncel TL karşılığı</p>
                 </div>
               </div>
-              <div className="text-xl font-light text-red-600">
-                {formatCurrency(report.totalKalanBorc)}
+              <div className="text-xl font-light text-red-600 flex gap-4">
+                  <span>{formatCurrency(totalsInTL.kalanBorcTL)}</span>
               </div>
             </div>
 
@@ -321,15 +376,18 @@ export default function BorcAlacakPage() {
                 </thead>
                 <tbody className="divide-y divide-neutral-50">
                     {report.borcluListesi.map((row) => (
-                    <tr key={row.kisi.id} className="hover:bg-neutral-50 transition-colors group">
+                    <tr key={`${row.kisi.id}-${row.doviz}`} className="hover:bg-neutral-50 transition-colors group">
                         <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-neutral-100 text-neutral-600 flex items-center justify-center text-xs font-bold group-hover:bg-neutral-900 group-hover:text-white transition-colors">
+                            <div className="w-8 h-8 rounded-full bg-neutral-100 text-neutral-600 flex items-center justify-center text-xs font-bold group-hover:bg-neutral-900 group-hover:text-white transition-colors shrink-0">
                                 {row.kisi.ad.charAt(0)}
                             </div>
                             <div>
-                                <div className="text-sm font-medium text-neutral-900">{row.kisi.ad}</div>
-                                <div className="text-[10px] text-neutral-400 flex items-center gap-1 font-mono">
+                                <div className="text-sm font-medium text-neutral-900 flex items-center gap-2">
+                                  {row.kisi.ad}
+                                  {row.doviz !== 'TRY' && <span className="text-[10px] px-1.5 py-0.5 bg-neutral-200 text-neutral-700 rounded font-bold">{row.doviz}</span>}
+                                </div>
+                                <div className="text-[10px] text-neutral-400 flex items-center gap-1 font-mono mt-0.5">
                                     <CalendarClock size={10} /> {row.sonVade ? row.sonVade.split('-').reverse().join('.') : '-'}
                                 </div>
                             </div>
@@ -350,7 +408,7 @@ export default function BorcAlacakPage() {
                         </td>
                         <td className="px-6 py-4 text-right">
                         <div className="text-sm font-medium text-neutral-900 whitespace-nowrap">
-                            {formatCurrency(row.kalanBorc)}
+                            {formatMoney(row.kalanBorc, row.doviz)}
                         </div>
                         </td>
                     </tr>

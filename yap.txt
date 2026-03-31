@@ -1,20 +1,18 @@
+Need to install the following packages:
+tree-node-cli@3.0.0
+Ok to proceed? (y) 
 opsiron-monorepo
 ├── apps
 │   ├── craftops
 │   │   ├── aycaninsaat
 │   │   │   ├── README.md
-│   │   │   ├── dist
-│   │   │   │   ├── assets
-│   │   │   │   │   ├── index-BZ64iBrQ.js
-│   │   │   │   │   └── index-CF2B7MBK.css
-│   │   │   │   ├── index.html
-│   │   │   │   └── vite.svg
 │   │   │   ├── eslint.config.js
 │   │   │   ├── index.html
 │   │   │   ├── package-lock.json
 │   │   │   ├── package.json
 │   │   │   ├── postcss.config.js
 │   │   │   ├── public
+│   │   │   │   ├── OpsironLogo.png
 │   │   │   │   └── vite.svg
 │   │   │   ├── src
 │   │   │   │   ├── App.css
@@ -35,12 +33,14 @@ opsiron-monorepo
 │   │   │   │       ├── KisilerDemo.tsx
 │   │   │   │       ├── LoginPage.tsx
 │   │   │   │       ├── OverviewPage.tsx
+│   │   │   │       ├── Santiyedetaypage.tsx
 │   │   │   │       └── SettingsPage.tsx
 │   │   │   ├── tailwind.config.js
 │   │   │   ├── tsconfig.app.json
 │   │   │   ├── tsconfig.json
 │   │   │   ├── tsconfig.node.json
-│   │   │   └── vite.config.ts
+│   │   │   ├── vite.config.ts
+│   │   │   └── yapi.txt
 │   │   ├── editioncoffeeroastery
 │   │   │   ├── README.md
 │   │   │   ├── editionroastery-tree.txt
@@ -54,6 +54,7 @@ opsiron-monorepo
 │   │   │   │   ├── App.css
 │   │   │   │   ├── App.tsx
 │   │   │   │   ├── assets
+│   │   │   │   │   ├── OpsironLogo.png
 │   │   │   │   │   └── react.svg
 │   │   │   │   ├── components
 │   │   │   │   │   ├── CustomSelect.tsx
@@ -83,6 +84,41 @@ opsiron-monorepo
 │   │   │   ├── tsconfig.json
 │   │   │   ├── tsconfig.node.json
 │   │   │   └── vite.config.ts
+│   │   ├── finansdemo
+│   │   │   ├── README.md
+│   │   │   ├── eslint.config.js
+│   │   │   ├── index.html
+│   │   │   ├── package-lock.json
+│   │   │   ├── package.json
+│   │   │   ├── postcss.config.js
+│   │   │   ├── public
+│   │   │   │   └── vite.svg
+│   │   │   ├── src
+│   │   │   │   ├── App.css
+│   │   │   │   ├── App.tsx
+│   │   │   │   ├── assets
+│   │   │   │   │   └── react.svg
+│   │   │   │   ├── components
+│   │   │   │   │   ├── CustomSelect.tsx
+│   │   │   │   │   ├── Layout.tsx
+│   │   │   │   │   └── Modal.tsx
+│   │   │   │   ├── context
+│   │   │   │   │   └── FinanceContext.tsx
+│   │   │   │   ├── data
+│   │   │   │   │   └── dummyData.ts
+│   │   │   │   ├── index.css
+│   │   │   │   ├── main.jsx
+│   │   │   │   └── pages
+│   │   │   │       ├── EntitiesPage.tsx
+│   │   │   │       ├── EntityDetailPage.tsx
+│   │   │   │       ├── FinanceDashboard.tsx
+│   │   │   │       ├── ProductionPage.tsx
+│   │   │   │       ├── ReportsPage.tsx
+│   │   │   │       ├── SettingsPage.tsx
+│   │   │   │       └── TransactionsPage.tsx
+│   │   │   ├── tailwind.config.js
+│   │   │   ├── vite.config.js
+│   │   │   └── yapi.txt
 │   │   └── stokdemo
 │   │       ├── README.md
 │   │       ├── eslint.config.js
@@ -91,11 +127,11 @@ opsiron-monorepo
 │   │       ├── package.json
 │   │       ├── postcss.config.js
 │   │       ├── public
-│   │       │   └── OpsironLogo.png
 │   │       ├── src
 │   │       │   ├── App.css
 │   │       │   ├── App.tsx
 │   │       │   ├── assets
+│   │       │   │   ├── StokIcon.png
 │   │       │   │   └── react.svg
 │   │       │   ├── components
 │   │       │   │   ├── CustomSelect.tsx
@@ -169,48 +205,7 @@ opsiron-monorepo
 │       │       └── validation.js
 │       ├── vite.config.js
 │       └── yapi.txt
-├── dist
-│   ├── OpsironLogo-v2.png
-│   ├── OpsironLogo.png
-│   ├── assets
-│   │   ├── About-CycYQrLF.js
-│   │   ├── Card-C-LXXFRM.js
-│   │   ├── Contact-DmSyHe8_.js
-│   │   ├── CraftOps-DkfP_VBu.js
-│   │   ├── Home-CJb0zjuw.js
-│   │   ├── KVKK-DDJ4Utf2.js
-│   │   ├── NotFound-DVhTk915.js
-│   │   ├── Pricing-DJmG7xq1.js
-│   │   ├── Privacy-CsdfyIs2.js
-│   │   ├── ServeOps-DaMf1qoY.js
-│   │   ├── Terms-2N003NqJ.js
-│   │   ├── arrow-right-By9aL7K8.js
-│   │   ├── check-DKZdlP34.js
-│   │   ├── circle-alert-CfDUNGIu.js
-│   │   ├── clock-LRr05ryO.js
-│   │   ├── index-OaG4d1wp.js
-│   │   ├── index-x9QLVIeC.css
-│   │   ├── opsiron-CXJpZ2_G.png
-│   │   ├── package-UTnIuIo6.js
-│   │   ├── shield-check-CKxOZkny.js
-│   │   ├── trending-up-95c2vuRd.js
-│   │   └── validation--holevPD.js
-│   ├── craftops
-│   │   ├── aycaninsaat
-│   │   │   ├── assets
-│   │   │   │   ├── index-BJOxO-_v.js
-│   │   │   │   └── index-WkRYh2jH.css
-│   │   │   ├── index.html
-│   │   │   └── vite.svg
-│   │   └── editioncoffeeroastery
-│   │       ├── ForgeOpsLogo.jpg
-│   │       ├── assets
-│   │       │   ├── index-ChVSRNMA.js
-│   │       │   └── index-DMpbyScS.css
-│   │       └── index.html
-│   ├── index.html
-│   └── opsiron.png
 ├── netlify.toml
 ├── package-lock.json
 ├── package.json
-└── yapi.txt
+└── yap.txt
