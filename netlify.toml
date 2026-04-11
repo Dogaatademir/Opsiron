@@ -1,6 +1,7 @@
 [build]
   command = "npm run install:all && npm run build:all"
   publish = "dist"
+  functions = "apps/opsiron-web/netlify/functions"
 
 # --- YENİ EKLENEN KURAL: STOK DEMO ---
 [[redirects]]

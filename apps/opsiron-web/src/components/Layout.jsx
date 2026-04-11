@@ -10,51 +10,41 @@ export default function Layout() {
 
   // Analytics Page View Tracking
   useEffect(() => {
-    // Google Analytics 4 (GA4) entegrasyonu buraya gelecek.
-    // Şimdilik console'a basıyoruz, production'da window.gtag(...) olacak.
     if (process.env.NODE_ENV === 'development') {
       console.log(`📊 Page View Tracked: ${location.pathname}`);
     }
-    
-    // Opsiyonel: Her sayfa değişiminde focus'u resetle (A11y)
-    // document.body.focus(); 
   }, [location]);
 
+  // Global olarak yeni premium stüdyo teması (aydınlık ve rafine) uygulandı
   return (
-    <>
+    <div className="bg-[#F7F7F5] text-[#0F0F10] min-h-screen flex flex-col font-sans selection:bg-[#0F0F10] selection:text-white">
       {/* 1. Global SEO Fallback */}
-      {/* Sayfalar kendi SEO'sunu tanımlamazsa buradaki default değerler geçerli olur */}
       <SEO />
 
-
-
-
-      {/* 3. Navigation */}
+      {/* 2. Navigation */}
       <Navbar />
 
-      {/* 4. Main Content Area */}
-      {/* Navbar fixed olduğu için üstten padding bırakıyoruz */}
+      {/* 3. Main Content Area */}
+      {/* Sayfaların en üstten (hero sections) başlaması için paddingTop kullanılmıyor */}
       <main 
         id="main-content" 
         role="main" 
-        style={{ 
-          minHeight: '80vh', // Footer'ı aşağı itmek için
-          paddingTop: '80px', // Navbar yüksekliği kadar boşluk (Sticky header için)
-          position: 'relative'
-        }}
+        className="flex-grow relative"
       >
-        {/* Route geçişlerinde içerik yüklenirken inline loading göster */}
         <Suspense fallback={
-          <div style={{ height: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Loading variant="inline" size="lg" text="Yükleniyor..." />
+          <div className="h-screen w-full flex flex-col items-center justify-center bg-[#F7F7F5] gap-4">
+            {/* Loading componenti yeni minimalist temaya uyarlandı */}
+            <div className="text-[10px] uppercase tracking-[0.3em] text-[#A1A1AA] animate-pulse">
+              Yükleniyor...
+            </div>
           </div>
         }>
           <Outlet />
         </Suspense>
       </main>
 
-      {/* 5. Footer */}
+      {/* 4. Footer */}
       <Footer />
-    </>
+    </div>
   );
 }

@@ -8,17 +8,18 @@ import ScrollToTop from './components/common/ScrollToTop';
 
 // Lazy Loaded Pages (Ana Sayfalar)
 const Home = lazy(() => import('./pages/Home'));
-const CraftOps = lazy(() => import('./pages/CraftOps'));
-const ServeOps = lazy(() => import('./pages/ServeOps'));
+const CraftOps = lazy(() => import('./pages/Work'));
+const ServeOps = lazy(() => import('./pages/Services'));
 const About = lazy(() => import('./pages/About'));
 const Contact = lazy(() => import('./pages/Contact'));
-const Pricing = lazy(() => import('./pages/Pricing'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
 const KVKK = lazy(() => import('./pages/KVKK'));
 
 import './App.css';
+//import Homepage from './pages/Home';
+import Work from './pages/Work';
 
 function App() {
   return (
@@ -32,11 +33,10 @@ function App() {
           <Route path="/" element={<Layout />}>
             {/* Ana Rotalar */}
             <Route index element={<Home />} />
-            <Route path="craftops" element={<CraftOps />} />
-            <Route path="serveops" element={<ServeOps />} />
+            <Route path="work" element={<Work />} />
+            <Route path="services" element={<ServeOps />} />
             <Route path="about" element={<About />} />
             <Route path="contact" element={<Contact />} />
-            <Route path="pricing" element={<Pricing />} />
             
             {/* Yasal Rotalar - YENİ */}
             <Route path="privacy" element={<Privacy />} />

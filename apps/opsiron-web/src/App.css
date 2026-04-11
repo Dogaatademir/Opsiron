@@ -1,41 +1,73 @@
 @import "tailwindcss";
 
 @theme {
-  /* Renkler - App.css dosyanızdan alındı */
-  --color-page: #fafafa;
-  --color-card: #ffffff;
-  --color-dark: #171717;
-  --color-dark-hover: #000000;
-  --color-muted: #737373;
-  --color-light: #a3a3a3;
-  --color-border-gray: #e5e5e5;
-  --color-border-dark: #171717;
-
-  /* Durum Renkleri */
-  --color-critical: #dc2626;
-  --color-low: #d97706;
-  --color-good: #10b981;
-
-  /* Header Boyutu */
-  --spacing-header: 80px;
+  /* Home.jsx Renk Paleti */
+  --color-page: #F7F7F5;         /* Arka plan kırık beyaz */
+  --color-page-alt: #F2F2EF;     /* Gradient geçişleri için */
+  --color-card: #FFFFFF;         /* Saf beyaz kartlar */
+  --color-dark: #0F0F10;         /* Ana metin ve koyu alanlar */
+  --color-muted: #6B6B73;        /* Yardımcı metin rengi */
+  --color-accent: #6366F1;       /* İndigo aksan rengi */
+  --color-accent-hover: #4F46E5; /* Hover aksan rengi */
+  --color-border-subtle: #E4E4E7;/* İnce border rengi */
+  
+  /* Header & Spacing */
+  --spacing-header: 96px;        /* pt-24 uyumu için */
 }
 
 @layer base {
   body {
+    /* Home.jsx: text-[#0F0F10] bg-[#F7F7F5] */
     @apply bg-page text-dark font-sans leading-relaxed min-h-screen flex flex-col antialiased;
   }
-  h1, h2, h3, h4 {
-    @apply font-light tracking-tighter text-dark;
+  
+  /* Seçim rengini Home.jsx ile eşleme */
+  ::selection {
+    @apply bg-accent text-white;
   }
-  h1 { @apply text-4xl md:text-6xl mb-6 leading-[1.1]; }
-  h2 { @apply text-3xl md:text-4xl mb-4; }
-  h3 { @apply text-xl font-medium mb-2 tracking-tight; }
-  p { @apply text-muted font-light mb-6; }
+
+  h1, h2, h3, h4 {
+    /* Home.jsx: font-light uppercase tracking-[0.08em] */
+    @apply font-light tracking-[0.08em] text-dark uppercase;
+  }
+
+  h1 { 
+    /* Home.jsx Hero: text-5xl md:text-8xl */
+    @apply text-5xl md:text-7xl lg:text-8xl leading-[1.05] mb-8; 
+  }
+
+  h2 { 
+    /* Home.jsx Sections: text-3xl md:text-4xl */
+    @apply text-3xl md:text-4xl mb-6; 
+  }
+
+  h3 { 
+    /* Home.jsx Projects: text-xl md:text-2xl */
+    @apply text-xl md:text-2xl font-normal mb-2 tracking-[0.05em]; 
+  }
+
+  p { 
+    /* Home.jsx: text-[#6B6B73] font-light */
+    @apply text-muted font-light mb-6 leading-relaxed; 
+  }
 }
 
 @layer components {
-  /* Klasik sınıfları Tailwind ile modernize ettik */
+  /* SectionLabel bileşeni ile uyumlu sınıf */
   .u-label {
-    @apply text-[0.65rem] uppercase tracking-[0.15em] font-semibold text-light block mb-4;
+    @apply text-[10px] uppercase tracking-[0.3em] font-medium text-muted block mb-4;
+  }
+
+  /* Ana Buton Stili (CTA ve Hero için ortak) */
+  .btn-primary {
+    @apply inline-flex items-center justify-center bg-accent text-white text-[10px] 
+           uppercase tracking-[0.3em] px-12 py-4 transition-all duration-300 
+           hover:bg-accent-hover shadow-[0_4px_14px_rgba(99,102,241,0.2)];
+  }
+
+  /* İkincil Buton Stili (Projeyi Keşfet gibi) */
+  .btn-secondary {
+    @apply px-8 py-4 bg-white text-dark text-[10px] uppercase tracking-[0.2em] 
+           font-medium border border-transparent hover:bg-page-alt transition-colors;
   }
 }
