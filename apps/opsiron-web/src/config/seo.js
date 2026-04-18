@@ -32,7 +32,7 @@ export const defaultMeta = {
         url: `${SITE_META.siteUrl}${SITE_META.ogImage}`,
         width: 1200,
         height: 630,
-        alt: `${SITE_META.siteName} — Butik Web Design Stüdyosu`,
+        alt: `${SITE_META.siteName} — Opsiron — Web Design Stüdyosu`,
       },
     ],
   },
