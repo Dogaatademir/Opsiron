@@ -18,7 +18,7 @@ export const SITE_META = {
   foundedYear: 2025,
 
   // Default SEO — Ana sayfa için
-  defaultTitle: "Opsiron — Butik Web Design Stüdyosu | Ankara",
+  defaultTitle: "Opsiron - Web Design Studio",
   defaultDescription:
     "Markalara özel web sitesi tasarımı ve geliştirme. Hazır şablon yok, kopyalanmış tasarım yok — yalnızca markanıza özel, estetik ve işlevsel dijital deneyimler.",
   defaultKeywords: [
@@ -51,7 +51,7 @@ export const SITE_META = {
 // ============================================
 export const PAGE_SEO = {
   home: {
-    title: "Opsiron — Butik Web Design Stüdyosu | Markanıza Özel Web Sitesi",
+    title: null, // Ana sayfa defaultTitle'ı kullanır: "Opsiron - Web Design Studio"
     description:
       "Hazır şablondan değil, markanızın kimliğinden doğan web siteleri. Ankara merkezli butik web design stüdyosu Opsiron ile dijitalde doğru görünün.",
     keywords: [
@@ -64,7 +64,7 @@ export const PAGE_SEO = {
     ],
   },
   about: {
-    title: "Hakkımızda — Opsiron Web Design Stüdyosu",
+    title: "Hakkımızda",
     description:
       "Opsiron, markalara özel dijital deneyimler tasarlayan butik bir web design stüdyosudur. Her projeye sıfırdan bakar, hazır kalıplara dayanmaz.",
     keywords: [
@@ -75,7 +75,7 @@ export const PAGE_SEO = {
     ],
   },
   work: {
-    title: "Seçkin İşler — Opsiron Portfolyo",
+    title: "Seçkin İşler",
     description:
       "Opsiron'un markalara özel tasarladığı web sitelerinden seçkin örnekler. E-ticaret, kurumsal, portfolyo ve daha fazlası.",
     keywords: [
@@ -86,7 +86,7 @@ export const PAGE_SEO = {
     ],
   },
   services: {
-    title: "Uzmanlıklar — Web Tasarım & Geliştirme Hizmetleri | Opsiron",
+    title: "Uzmanlıklar",
     description:
       "Marka uyumlu web tasarımı, özel web geliştirme, içerik yapısı, responsive deneyim ve teknik bakım. Opsiron'un sunduğu hizmetler.",
     keywords: [
@@ -99,7 +99,7 @@ export const PAGE_SEO = {
     ],
   },
   contact: {
-    title: "İletişim — Projenizi Konuşalım | Opsiron",
+    title: "İletişim",
     description:
       "Web sitesi projeniz için Opsiron ile iletişime geçin. Markanızı dinleyelim, dijital yolculuğunuzu birlikte planlayalım.",
     keywords: [
@@ -110,19 +110,19 @@ export const PAGE_SEO = {
     ],
   },
   privacy: {
-    title: "Gizlilik Politikası | Opsiron",
+    title: "Gizlilik Politikası",
     description:
       "Opsiron olarak kişisel verilerinizi nasıl topladığımız, kullandığımız ve koruduğumuz hakkında bilgiler.",
     keywords: ["gizlilik politikası", "veri güvenliği", "opsiron gizlilik"],
   },
   terms: {
-    title: "Kullanım Koşulları | Opsiron",
+    title: "Kullanım Koşulları",
     description:
       "Opsiron web sitesi ve hizmetlerinin kullanımına dair yasal şartlar ve hükümler.",
     keywords: ["kullanım koşulları", "hizmet şartları", "yasal uyarı"],
   },
   kvkk: {
-    title: "KVKK Aydınlatma Metni | Opsiron",
+    title: "KVKK Aydınlatma Metni",
     description:
       "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında haklarınız ve veri işleme süreçlerimiz.",
     keywords: ["kvkk", "kişisel verilerin korunması", "aydınlatma metni"],
