@@ -54,20 +54,20 @@ const EXPERTISE = [
 
 const PROJECTS = [
   {
-    name: 'Aureline Studio',
-    category: 'Brand Website',
+    name: 'Edition Coffee',
+    category: 'E-Ticaret Sitesi',
     year: '2026',
-    tag: 'Moda & Yaşam',
-    url: 'https://example.com',
-    img: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2000&auto=format&fit=crop',
+    tag: 'Yeme & İçme',
+    url: 'https://editioncoffee.com.tr',
+    img: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=2000&auto=format&fit=crop',
   },
   {
-    name: 'Velmor Partners',
-    category: 'Corporate Presence',
+    name: 'Nuray Keser Gayrimenkul',
+    category: 'Kişisel Portfolyo ve İlanlar',
     year: '2026',
-    tag: 'Danışmanlık',
-    url: 'https://example.com',
-    img: 'https://images.unsplash.com/photo-1497366412874-3415097a27e7?q=80&w=2000&auto=format&fit=crop',
+    tag: 'Emlak',
+    url: 'https://nuraykeser.com',
+    img: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=2000&auto=format&fit=crop',
   },
 ];
 

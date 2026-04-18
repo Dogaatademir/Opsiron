@@ -9,12 +9,11 @@
 
 const EMAIL_REGEX = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
 
-// TR Telefon Formatı: 5xxxxxxxxx, 05xxxxxxxxx, +905xxxxxxxxx kabul eder.
-// Boşlukları ve parantezleri temizleyip kontrol edeceğiz.
-const PHONE_REGEX = /^(05|5|\+905)\d{9}$/; 
+// TR Telefon Formatı: 5xxxxxxxxx, 05xxxxxxxxx, +905xxxxxxxxx
+const PHONE_REGEX = /^(05|5|\+905)\d{9}$/;
 
 // ============================================
-// ATOMIC VALIDATORS (Tekil Kontroller)
+// ATOMIC VALIDATORS
 // ============================================
 
 export const isEmpty = (value) => {
@@ -29,7 +28,6 @@ export const isEmail = (value) => {
 };
 
 export const isPhone = (value) => {
-  // Sadece rakamları bırak
   const cleanPhone = String(value).replace(/[\s()-]/g, '');
   return cleanPhone && PHONE_REGEX.test(cleanPhone);
 };
@@ -43,7 +41,7 @@ export const maxLength = (value, max) => {
 };
 
 // ============================================
-// FORM SCHEMAS (Özel Form Validasyonları)
+// FORM SCHEMAS
 // ============================================
 
 /**
@@ -55,60 +53,38 @@ export const validateContactForm = (values) => {
 
   // Ad Soyad
   if (isEmpty(values.name)) {
-    errors.name = "Ad Soyad alanı zorunludur.";
+    errors.name = 'Ad Soyad alanı zorunludur.';
   } else if (!minLength(values.name, 3)) {
-    errors.name = "Ad Soyad en az 3 karakter olmalıdır.";
+    errors.name = 'Ad Soyad en az 3 karakter olmalıdır.';
   }
 
-  // Şirket Adı
-  if (isEmpty(values.company)) {
-    errors.company = "İşletme adı zorunludur.";
+  // Marka / Şirket Adı
+  if (isEmpty(values.brand)) {
+    errors.brand = 'Marka veya şirket adı zorunludur.';
   }
 
   // E-posta
   if (isEmpty(values.email)) {
-    errors.email = "E-posta adresi zorunludur.";
+    errors.email = 'E-posta adresi zorunludur.';
   } else if (!isEmail(values.email)) {
-    errors.email = "Geçerli bir e-posta adresi giriniz.";
+    errors.email = 'Geçerli bir e-posta adresi giriniz.';
   }
 
-  // Telefon
-  if (isEmpty(values.phone)) {
-    errors.phone = "Telefon numarası zorunludur.";
-  } else if (!isPhone(values.phone)) {
-    errors.phone = "Geçerli bir telefon numarası giriniz (5XX...).";
+  // Telefon (Opsiyonel — girilirse format kontrolü yapılır)
+  if (!isEmpty(values.phone) && !isPhone(values.phone)) {
+    errors.phone = 'Geçerli bir telefon numarası giriniz (5XX...).';
   }
 
-  // İlgi Alanı
-  if (isEmpty(values.interest)) {
-    errors.interest = "Lütfen bir ilgi alanı seçiniz.";
+  // Hizmet Alanı
+  if (isEmpty(values.serviceArea)) {
+    errors.serviceArea = 'Lütfen bir hizmet alanı seçiniz.';
   }
 
-  // Mesaj (Opsiyonel olabilir ama biz zorunlu tutalım)
+  // Mesaj
   if (isEmpty(values.message)) {
-    errors.message = "Lütfen operasyonel zorluklarınızı kısaca anlatın.";
+    errors.message = 'Lütfen projeniz hakkında kısa bilgi verin.';
   } else if (!minLength(values.message, 10)) {
-    errors.message = "Mesajınız çok kısa, lütfen biraz daha detay verin.";
-  }
-
-  return errors;
-};
-
-/**
- * ServeOps Pilot Başvuru Formu Validasyonu
- * (ServeOps.jsx için)
- */
-export const validateServeOpsForm = (values) => {
-  let errors = {};
-
-  if (isEmpty(values.name)) errors.name = "Ad Soyad zorunludur.";
-  
-  if (isEmpty(values.businessName)) errors.businessName = "İşletme adı zorunludur.";
-  
-  if (isEmpty(values.posSystem)) errors.posSystem = "Kullandığınız POS sistemi bilgisi gereklidir.";
-  
-  if (isEmpty(values.problem)) {
-    errors.problem = "Lütfen en büyük sorununuzu belirtin.";
+    errors.message = 'Mesajınız çok kısa, biraz daha detay verebilir misiniz?';
   }
 
   return errors;

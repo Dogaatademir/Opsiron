@@ -3,13 +3,12 @@ import { Routes, Route } from 'react-router-dom';
 
 // Layout & Common Components
 import Layout from './components/Layout';
-import Loading from './components/common/Loading';
 import ScrollToTop from './components/common/ScrollToTop';
 
-// Lazy Loaded Pages (Ana Sayfalar)
+// Lazy Loaded Pages
 const Home = lazy(() => import('./pages/Home'));
-const CraftOps = lazy(() => import('./pages/Work'));
-const ServeOps = lazy(() => import('./pages/Services'));
+const Work = lazy(() => import('./pages/Work'));
+const Services = lazy(() => import('./pages/Services'));
 const About = lazy(() => import('./pages/About'));
 const Contact = lazy(() => import('./pages/Contact'));
 const NotFound = lazy(() => import('./pages/NotFound'));
@@ -18,32 +17,34 @@ const Terms = lazy(() => import('./pages/Terms'));
 const KVKK = lazy(() => import('./pages/KVKK'));
 
 import './App.css';
-//import Homepage from './pages/Home';
-import Work from './pages/Work';
 
 function App() {
   return (
     <>
-      {/* Route değişiminde sayfa başı yap */}
       <ScrollToTop />
-      
-      {/* Sayfalar yüklenirken gösterilecek Loading bileşeni */}
-      <Suspense fallback={<Loading variant="fullscreen" text="Opsiron Yükleniyor..." />}>
+
+      <Suspense fallback={
+        <div className="h-screen w-full flex items-center justify-center bg-[#F7F7F5]">
+          <div className="text-[10px] uppercase tracking-[0.3em] text-[#A1A1AA] animate-pulse">
+            Yükleniyor...
+          </div>
+        </div>
+      }>
         <Routes>
           <Route path="/" element={<Layout />}>
             {/* Ana Rotalar */}
             <Route index element={<Home />} />
             <Route path="work" element={<Work />} />
-            <Route path="services" element={<ServeOps />} />
+            <Route path="services" element={<Services />} />
             <Route path="about" element={<About />} />
             <Route path="contact" element={<Contact />} />
-            
-            {/* Yasal Rotalar - YENİ */}
+
+            {/* Yasal Rotalar */}
             <Route path="privacy" element={<Privacy />} />
             <Route path="terms" element={<Terms />} />
             <Route path="kvkk" element={<KVKK />} />
-            
-            {/* 404 Catch-All Route */}
+
+            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { CONTACT_INFO } from '../../constants/content';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -7,15 +8,15 @@ export default function Footer() {
   return (
     <footer className="bg-[#FFFFFF] pt-24 pb-12 border-t border-[#E4E4E7] relative z-20 font-sans selection:bg-[#0F0F10] selection:text-white" role="contentinfo">
       <div className="max-w-7xl mx-auto px-6">
-        
-        {/* ÜST KISIM: GRID YAPISI */}
+
+        {/* ÜST KISIM */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-16 md:gap-8 mb-24">
-          
-          {/* 1. Kolon: Marka ve Vizyon (Daha geniş) */}
+
+          {/* 1. Kolon: Marka */}
           <div className="md:col-span-5 flex flex-col gap-8">
-            <Link 
-              to="/" 
-              className="text-2xl tracking-[0.2em] uppercase font-normal text-[#0F0F10] hover:text-[#6B6B73] transition-colors" 
+            <Link
+              to="/"
+              className="text-2xl tracking-[0.2em] uppercase font-normal text-[#0F0F10] hover:text-[#6B6B73] transition-colors"
               aria-label="Ana Sayfaya Dön"
             >
               OPSIRON
@@ -25,7 +26,7 @@ export default function Footer() {
             </p>
           </div>
 
-          {/* 2. Kolon: Stüdyo (Menü) */}
+          {/* 2. Kolon: Stüdyo */}
           <div className="md:col-span-2 flex flex-col gap-8">
             <h4 className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#A1A1AA]">Stüdyo</h4>
             <nav aria-label="Stüdyo Linkleri">
@@ -60,44 +61,42 @@ export default function Footer() {
             <nav aria-label="Sosyal Medya Linkleri">
               <ul className="flex flex-col gap-4">
                 <li>
-                  <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-[13px] font-light text-[#0F0F10] hover:text-[#6B6B73] transition-colors duration-300">
+                  <a href="https://instagram.com/opsiron" target="_blank" rel="noopener noreferrer" className="text-[13px] font-light text-[#0F0F10] hover:text-[#6B6B73] transition-colors duration-300">
                     Instagram
                   </a>
                 </li>
                 <li>
-                  <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-[13px] font-light text-[#0F0F10] hover:text-[#6B6B73] transition-colors duration-300">
+                  <a href="https://linkedin.com/company/opsiron" target="_blank" rel="noopener noreferrer" className="text-[13px] font-light text-[#0F0F10] hover:text-[#6B6B73] transition-colors duration-300">
                     LinkedIn
                   </a>
                 </li>
                 <li>
-                  <a href="https://behance.net" target="_blank" rel="noopener noreferrer" className="text-[13px] font-light text-[#0F0F10] hover:text-[#6B6B73] transition-colors duration-300">
+                  <a href="https://behance.net/opsiron" target="_blank" rel="noopener noreferrer" className="text-[13px] font-light text-[#0F0F10] hover:text-[#6B6B73] transition-colors duration-300">
                     Behance
-                  </a>
-                </li>
-                <li>
-                  <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-[13px] font-light text-[#0F0F10] hover:text-[#6B6B73] transition-colors duration-300">
-                    X (Twitter)
                   </a>
                 </li>
               </ul>
             </nav>
           </div>
 
-          {/* 4. Kolon: İletişim Bilgileri */}
+          {/* 4. Kolon: İletişim */}
           <div className="md:col-span-3 flex flex-col gap-8">
             <h4 className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#A1A1AA]">Bize Ulaşın</h4>
             <address className="not-italic flex flex-col gap-3">
-              <a href="mailto:info@opsiron.com" className="text-[13px] font-light text-[#0F0F10] hover:text-[#6B6B73] transition-colors duration-300 inline-block">
-                info@opsiron.com
+              <a
+                href={`mailto:${CONTACT_INFO.email}`}
+                className="text-[13px] font-light text-[#0F0F10] hover:text-[#6B6B73] transition-colors duration-300 inline-block"
+              >
+                {CONTACT_INFO.email}
               </a>
               <span className="text-[13px] font-light text-[#6B6B73] leading-relaxed block mt-1">
-                Ankara, <br /> Türkiye
+                {CONTACT_INFO.address.city}, <br /> {CONTACT_INFO.address.country}
               </span>
             </address>
           </div>
         </div>
 
-        {/* ALT KISIM: TELİF VE YASAL */}
+        {/* ALT KISIM */}
         <div className="pt-8 border-t border-[#E4E4E7] flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="text-[10px] text-[#A1A1AA] uppercase tracking-[0.15em] font-light order-2 md:order-1">
             &copy; {currentYear} OPSIRON. TÜM HAKLARI SAKLIDIR.
@@ -116,10 +115,16 @@ export default function Footer() {
                     Kullanım Koşulları
                   </Link>
                 </li>
+                <li>
+                  <Link to="/kvkk" className="text-[10px] uppercase tracking-[0.15em] text-[#A1A1AA] hover:text-[#0F0F10] font-light transition-colors duration-300">
+                    KVKK
+                  </Link>
+                </li>
               </ul>
             </nav>
           </div>
         </div>
+
       </div>
     </footer>
   );

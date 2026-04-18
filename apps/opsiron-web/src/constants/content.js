@@ -1,8 +1,9 @@
 // src/constants/content.js
 
 /**
- * Opsiron Web Sitesi - Merkezi İçerik Yönetimi
+ * Opsiron Web Sitesi — Merkezi İçerik Yönetimi
  * Tüm hardcoded içerikler bu dosyada toplanmıştır.
+ * Yeni kimlik: Butik Web Design Stüdyosu
  */
 
 // ============================================
@@ -10,25 +11,37 @@
 // ============================================
 export const SITE_META = {
   siteName: "Opsiron",
-  tagline: "Operasyonel Netlik",
+  tagline: "Markanın Dijital Yüzü",
   domain: "opsiron.com",
   siteUrl: "https://opsiron.com",
-  author: "Opsiron",
+  author: "Opsiron Web Design Studio",
   foundedYear: 2025,
-  
-  // Default SEO
-  defaultTitle: "Opsiron - İşletme Yönetim Sistemleri",
-  defaultDescription: "Üretim atölyelerinden hizmet noktalarına kadar uzanan karmaşık süreçlerde, işletmelerin kârlılığını sessizce eriten 'görünmeyen kayıpları' tespit edip görünür kılan stratejik teknoloji ortağınızdır.",
-  defaultKeywords: ["ERP", "Üretim Yönetimi", "Stok Takibi", "Restoran Yönetim Sistemi", "İşletme Yazılımı", "CraftOps", "ServeOps"],
-  
-  // Social Media
+
+  // Default SEO — Ana sayfa için
+  defaultTitle: "Opsiron — Butik Web Design Stüdyosu | Ankara",
+  defaultDescription:
+    "Markalara özel web sitesi tasarımı ve geliştirme. Hazır şablon yok, kopyalanmış tasarım yok — yalnızca markanıza özel, estetik ve işlevsel dijital deneyimler.",
+  defaultKeywords: [
+    "web tasarım",
+    "web tasarım Ankara",
+    "web sitesi tasarımı",
+    "özel web sitesi",
+    "web design stüdyo",
+    "marka web sitesi",
+    "butik web tasarım",
+    "React web geliştirme",
+    "kurumsal web sitesi",
+    "web sitesi yaptırma",
+  ],
+
+  // Sosyal Medya
   social: {
     twitter: "@opsiron",
     linkedin: "opsiron",
-    facebook: "opsiron",
+    instagram: "opsiron",
   },
-  
-  // Open Graph Defaults
+
+  // Open Graph
   ogImage: "/og-image.png", // 1200x630
   ogType: "website",
 };
@@ -38,48 +51,80 @@ export const SITE_META = {
 // ============================================
 export const PAGE_SEO = {
   home: {
-    title: "Opsiron - Sezgisel Kararların Yerini Veriye Dayalı Netlik Alsın",
-    description: "Üretim ve hizmet odaklı işletmelerin operasyonlarını tek bir doğruluk kaynağında birleştiren, sürdürülebilir çözümler.",
-    keywords: ["operasyonel yönetim", "üretim yazılımı", "stok yönetim sistemi", "ERP Türkiye"],
+    title: "Opsiron — Butik Web Design Stüdyosu | Markanıza Özel Web Sitesi",
+    description:
+      "Hazır şablondan değil, markanızın kimliğinden doğan web siteleri. Ankara merkezli butik web design stüdyosu Opsiron ile dijitalde doğru görünün.",
+    keywords: [
+      "web tasarım Ankara",
+      "özel web sitesi tasarımı",
+      "butik web design",
+      "marka web sitesi",
+      "web sitesi yaptırma",
+      "profesyonel web tasarım",
+    ],
   },
   about: {
-    title: "Hakkımızda - Operasyonel Netlik Sağlayan Teknoloji Ortağınız | Opsiron",
-    description: "2025 yılında işletmelerin operasyonel kör noktalarını aydınlatmak için kurulmuş yeni nesil teknoloji şirketi. Tek doğruluk kaynağı felsefesiyle çalışıyoruz.",
-    keywords: ["opsiron hakkında", "şirket vizyon", "teknoloji ortağı"],
+    title: "Hakkımızda — Opsiron Web Design Stüdyosu",
+    description:
+      "Opsiron, markalara özel dijital deneyimler tasarlayan butik bir web design stüdyosudur. Her projeye sıfırdan bakar, hazır kalıplara dayanmaz.",
+    keywords: [
+      "opsiron hakkında",
+      "web design stüdyo",
+      "butik web tasarım ekibi",
+      "Ankara web tasarımcı",
+    ],
   },
-  craftops: {
-    title: "CraftOps - Üretim ve Stok Yönetim Sistemi | Opsiron",
-    description: "Üretim atölyeleri için stok, reçete ve finansal yönetimi tek platformda birleştiren modüler sistem. Görünmeyen zararları tespit edin.",
-    keywords: ["üretim yönetimi", "stok takibi", "reçete yönetimi", "maliyet analizi", "craftops"],
+  work: {
+    title: "Seçkin İşler — Opsiron Portfolyo",
+    description:
+      "Opsiron'un markalara özel tasarladığı web sitelerinden seçkin örnekler. E-ticaret, kurumsal, portfolyo ve daha fazlası.",
+    keywords: [
+      "web tasarım portfolyo",
+      "web sitesi örnekleri",
+      "opsiron işler",
+      "web design örnekleri Türkiye",
+    ],
   },
-  serveops: {
-    title: "ServeOps - Restoran ve Kafe Yönetim Sistemi | Opsiron",
-    description: "POS entegrasyonlu, reçete bazlı stok takibi ve kârlılık analizi. Restoranınızın görünmeyen zararlarını ortaya çıkarın.",
-    keywords: ["restoran yönetimi", "pos entegrasyonu", "kafe yazılımı", "menü mühendisliği", "serveops"],
-  },
-  pricing: {
-    title: "Fiyatlandırma - İşletmenize Değer Katan Model | Opsiron",
-    description: "Modüler fiyatlandırma yapısı. İhtiyacınız olmayan özelliklere para ödemeyin. Stok, finans veya tam entegrasyon paketleri.",
-    keywords: ["erp fiyatları", "yazılım abonelik", "işletme yazılımı maliyet"],
+  services: {
+    title: "Uzmanlıklar — Web Tasarım & Geliştirme Hizmetleri | Opsiron",
+    description:
+      "Marka uyumlu web tasarımı, özel web geliştirme, içerik yapısı, responsive deneyim ve teknik bakım. Opsiron'un sunduğu hizmetler.",
+    keywords: [
+      "web tasarım hizmetleri",
+      "web geliştirme Ankara",
+      "React web sitesi",
+      "özel web sitesi geliştirme",
+      "kurumsal web tasarım",
+      "e-ticaret web tasarım",
+    ],
   },
   contact: {
-    title: "İletişim - İşletmenizi Tanıyalım | Opsiron",
-    description: "Ücretsiz keşif görüşmesi için iletişime geçin. Operasyonel kör noktalarınızı tespit edelim ve size özel çözüm oluşturalım.",
-    keywords: ["opsiron iletişim", "demo talebi", "teklif al"],
+    title: "İletişim — Projenizi Konuşalım | Opsiron",
+    description:
+      "Web sitesi projeniz için Opsiron ile iletişime geçin. Markanızı dinleyelim, dijital yolculuğunuzu birlikte planlayalım.",
+    keywords: [
+      "opsiron iletişim",
+      "web tasarım teklifi",
+      "web sitesi fiyat",
+      "web sitesi yaptırmak istiyorum",
+    ],
   },
-privacy: {
+  privacy: {
     title: "Gizlilik Politikası | Opsiron",
-    description: "Opsiron olarak kişisel verilerinizi nasıl topladığımız, kullandığımız ve koruduğumuz hakkında bilgiler.",
+    description:
+      "Opsiron olarak kişisel verilerinizi nasıl topladığımız, kullandığımız ve koruduğumuz hakkında bilgiler.",
     keywords: ["gizlilik politikası", "veri güvenliği", "opsiron gizlilik"],
   },
   terms: {
     title: "Kullanım Koşulları | Opsiron",
-    description: "Opsiron web sitesi ve hizmetlerinin kullanımına dair yasal şartlar ve hükümler.",
+    description:
+      "Opsiron web sitesi ve hizmetlerinin kullanımına dair yasal şartlar ve hükümler.",
     keywords: ["kullanım koşulları", "hizmet şartları", "yasal uyarı"],
   },
   kvkk: {
     title: "KVKK Aydınlatma Metni | Opsiron",
-    description: "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında haklarınız ve veri işleme süreçlerimiz.",
+    description:
+      "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında haklarınız ve veri işleme süreçlerimiz.",
     keywords: ["kvkk", "kişisel verilerin korunması", "aydınlatma metni"],
   },
 };
@@ -90,371 +135,266 @@ privacy: {
 export const CONTACT_INFO = {
   email: "hello@opsiron.com",
   phone: "+90 (537) 690 33 33",
-  phoneRaw: "+905376903333", // tel: link için
+  phoneRaw: "+905376903333",
   address: {
     city: "Ankara",
     country: "Türkiye",
     full: "Ankara / Türkiye",
   },
-  
-  // Çalışma Saatleri
   workingHours: {
     weekdays: "09:00 - 18:00",
     weekend: "Kapalı",
   },
-  
-  // SLA
   responseTime: "24 saat içinde yanıt",
 };
 
 // ============================================
-// CRAFTOPS ÖZELLİKLERİ
+// HİZMETLER
 // ============================================
-export const CRAFTOPS_FEATURES = {
-  // Modül 1: Sadece Stok
-  stock: [
-    "Hammadde Giriş/Çıkış",
-    "Anlık Stok Sayımı",
-    "Kritik Seviye Uyarıları",
-    "Tedarikçi Takibi",
-  ],
-  
-  // Modül 2: Sadece Finans
-  financial: [
-    "Reçete Bazlı Maliyet",
-    "Üretim Fire Analizi",
-    "Satın alma & Satış",
-    "Kârlılık Raporları",
-  ],
-  
-  // Modül 3: Tam Entegrasyon
-  full: [
-    "Tüm Stok Özellikleri",
-    "Tüm Finansal Özellikler",
-    "Uçtan Uca İzlenebilirlik",
-    "Rol Bazlı Yetkilendirme",
-  ],
-  
-  // Detaylı Özellikler (Grid Section)
-  detailedFeatures: [
-    {
-      icon: "Box",
-      title: "Akıllı Stok Yönetimi",
-      description: "Kritik stok uyarıları, raf takibi ve mobil barkodlu sayım imkanı.",
-    },
-    {
-      icon: "Wallet",
-      title: "Finansal Hareketler",
-      description: "Tedarikçi ödemeleri, müşteri tahsilatları ve vadesi gelen borç takibi.",
-    },
-    {
-      icon: "FileText",
-      title: "Dinamik Reçeteler",
-      description: "Ürün reçetelerini tanımlayın, hammadde fiyatı değişince maliyetiniz otomatik güncellensin.",
-    },
-    {
-      icon: "ArrowRightLeft",
-      title: "Satın alma & Satış",
-      description: "Tekliften siparişe, siparişten faturaya dönüşen entegre süreç yönetimi.",
-    },
-    {
-      icon: "PieChart",
-      title: "Görünmeyen Kayıp Analizi",
-      description: "Sistemdeki teorik stok ile sayım arasındaki farkı (fire/kayıp) finansal değeriyle raporlayın.",
-    },
-    {
-      icon: "Users",
-      title: "Rol Bazlı Yetkilendirme",
-      description: "Satın almacı fiyatları görsün, depo personeli sadece miktarları. Kim neyi görmeli siz karar verin.",
-    },
-  ],
-  
-  // Mevcut Durum vs Çözüm
-  problems: [
-    "Excel'de unutulan siparişler ve hatalı formüller.",
-    "Stokta var sanılan ama rafta olmayan ürünler.",
-    "Tahmini maliyetle fiyat verip zarar etmek.",
-    "Satış yaparken kâr mı zarar mı ettiğini ay sonunda öğrenmek.",
-  ],
-};
-
-// ============================================
-// SERVEOPS ÖZELLİKLERİ
-// ============================================
-export const SERVEOPS_FEATURES = {
-  upcoming: [
-    {
-      icon: "Receipt",
-      title: "POS Entegrasyonu",
-      description: "Satılan her ürün, anında stoktan reçetesiyle birlikte düşer. Manuel stok girmek yok.",
-    },
-    {
-      icon: "TrendingUp",
-      title: "Canlı Kârlılık Analizi",
-      description: "Hangi ürün ciro yapıyor, hangisi gerçekten kâr bırakıyor? Menü mühendisliği için net veri.",
-    },
-    {
-      icon: "AlertCircle",
-      title: "Kayıp & Kaçak Takibi",
-      description: "Teorik stok ile gerçek sayım arasındaki farkı (waste/zayi) TL cinsinden raporlayın.",
-    },
-  ],
-  
-  status: {
-    label: "Yakında",
-    phase: "Early Access / Pilot Program",
-    description: "Şu an pilot kullanıcılarımızla birlikte geliştirdiğimiz modüller",
-  },
-};
-
-// ============================================
-// FİYATLANDIRMA
-// ============================================
-export const PRICING_PLANS = {
-  craftops: {
-    modules: [
-      {
-        id: "stock",
-        name: "Stok Modülü",
-        subtitle: "Depo düzeni ve sayım kontrolü isteyenler için",
-        icon: "Package",
-        features: CRAFTOPS_FEATURES.stock,
-        ctaText: "Teklif İste",
-        ctaLink: "/contact",
-      },
-      {
-        id: "financial",
-        name: "Finans Modülü",
-        subtitle: "Maliyet, reçete ve kârlılığı görmek isteyenler için",
-        icon: "PieChart",
-        features: CRAFTOPS_FEATURES.financial,
-        ctaText: "Teklif İste",
-        ctaLink: "/contact",
-      },
-      {
-        id: "full",
-        name: "Tam Entegre Modül",
-        subtitle: "Stok ve finansın tek ekranda yönetildiği yapı",
-        icon: "Layers",
-        features: CRAFTOPS_FEATURES.full,
-        recommended: true,
-        ctaText: "Analiz Talep Et",
-        ctaLink: "/contact",
-      },
+export const SERVICES = [
+  {
+    no: "01",
+    title: "Marka Uyumlu Web Tasarımı",
+    tagline: "Markanın görünme biçimi.",
+    desc: "Hazır şablonlardan tamamen uzak, markanın tonu, estetik dünyası ve hitap ettiği kitleyle birebir uyumlu özel web sitesi tasarımı. Her sayfa, her bölüm ve her detay markanın karakterini taşır.",
+    deliverables: [
+      "Moodboard & Görsel Yön",
+      "Tipografi & Renk Sistemi",
+      "UI Tasarımı (Tüm Sayfalar)",
+      "Responsive Tasarım",
+      "Prototip & Kullanıcı Akışı",
     ],
-  },
-  
-  // Hizmet Modeli
-  serviceModel: {
-    setup: {
-      title: "Kurulum & Onboarding (Tek Seferlik)",
-      description: "Sistemin teknik kurulumu, veri aktarımı (reçeteler, cariler, stoklar) ve personel eğitimi bu aşamada yapılır.",
-    },
-    subscription: {
-      title: "Hizmet Aboneliği (Aylık/Yıllık)",
-      description: "Sunucu barındırma, güvenlik, yedekleme ve sürekli teknik destek hizmetini kapsar.",
-      includes: [
-        "Sunucu maliyetleri ve veri yedekleme",
-        "SSL sertifikası ve güvenlik güncellemeleri",
-        "Yeni özellikler ve versiyon yükseltmeleri",
-        "Öncelikli teknik destek kanalı",
-        "Hata düzeltmeleri ve bakım",
-      ],
-    },
-    whySetupFee: {
-      title: "Neden Kurulum Ücreti Var?",
-      reason: "Çoğu ERP projesinin başarısız olma sebebi, yanlış veri girişi ve yetersiz eğitimdir. Biz size sadece bir 'kullanıcı adı' satmıyoruz. İşleyen, verileri temizlenmiş ve personelin kullanabildiği çalışan bir sistem teslim ediyoruz. Bu efor, projenin başarısı için kritiktir.",
-    },
-  },
-};
-
-// ============================================
-// FAQ VERİLERİ
-// ============================================
-export const FAQ_DATA = [
-  {
-    id: 1,
-    question: "Neden web sitesinde sabit bir fiyat listesi yok?",
-    answer: "Çünkü 'kullanıcı başı lisans' satan bir SaaS değiliz. İşletmenizin ölçeği, şube sayısı ve ihtiyaç duyduğu modüllere (sadece stok, finans veya entegre) göre size özel, sürdürülebilir bir teklif oluşturuyoruz.",
-    category: "pricing",
+    ideal: "Yeni kurulan ya da rebranding yapan markalar.",
   },
   {
-    id: 2,
-    question: "ServeOps ürününü hemen satın alabilir miyim?",
-    answer: "ServeOps şu an 'Early Access' (Erken Erişim) dönemindedir. Sadece seçili pilot işletmelerle çalışıyoruz. Başvuru formunu doldurarak bekleme listesine katılabilirsiniz.",
-    category: "serveops",
+    no: "02",
+    title: "Özel Web Geliştirme",
+    tagline: "Hazır hissi vermeyen altyapı.",
+    desc: "Tasarımı, markaya özel yapılandırılmış, temiz ve ölçeklenebilir bir kod altyapısına dönüştürüyoruz. Performans, hız ve sürdürülebilirlik ön planda. Hazır theme yok, tekrar eden şablon yok.",
+    deliverables: [
+      "React / Next.js Geliştirme",
+      "CMS Entegrasyonu",
+      "SEO Teknik Altyapısı",
+      "Performans Optimizasyonu",
+      "Deployment & Yayına Alma",
+    ],
+    ideal: "Güçlü teknik altyapı isteyen markalar.",
   },
   {
-    id: 3,
-    question: "Sistemi denemek için demo hesabı açabilir miyim?",
-    answer: "Size boş bir ekran verip 'inceleyin' demek yerine; süreçlerinizi dinlediğimiz 30 dakikalık bir online görüşme yapıyoruz. Size uygunsa, verilerinizle oluşturulmuş bir pilot ortam sunuyoruz.",
-    category: "demo",
+    no: "03",
+    title: "Marka Sunumu & İçerik Yapısı",
+    tagline: "Ne söylendiği kadar nasıl söylendiği.",
+    desc: "Sayfa kurgusu, hiyerarşi, bölüm yapısı, metin yönlendirmesi ve kullanıcı akışı. Ziyaretçinin doğru yerde doğru mesajla karşılaşması için içerik mimarisi ve kopya yazımı.",
+    deliverables: [
+      "Sayfa Mimarisi & Site Haritası",
+      "Bölüm Hiyerarşisi",
+      "Başlık & Kopya Yazımı",
+      "CTA Yapısı",
+      "Kullanıcı Akışı Planlaması",
+    ],
+    ideal: "Mesajını netleştirmek isteyen markalar.",
   },
   {
-    id: 4,
-    question: "Kurulum ücreti ödemek zorunda mıyım?",
-    answer: "Evet. Biz sadece yazılım vermiyoruz; verilerinizi temizliyor, reçetelerinizi sisteme giriyor ve ekibinizi eğitiyoruz. Sistemin gerçekten çalışması için bu kurulum süreci zorunludur.",
-    category: "pricing",
+    no: "04",
+    title: "Responsive Deneyim",
+    tagline: "Her ekranda aynı kalite.",
+    desc: "Masaüstünden mobil ve tablete kadar her ekranda tutarlı, akıcı ve premium görünen bir deneyim. Piksel hassasiyetinde ince ayar. Boyut değil, his değişmez.",
+    deliverables: [
+      "Mobil Öncelikli Tasarım",
+      "Tablet Optimizasyonu",
+      "Çapraz Tarayıcı Uyumu",
+      "Dokunmatik Etkileşim Detayları",
+      "Görünürlük & Erişilebilirlik",
+    ],
+    ideal: "Mobil trafiği yüksek olan tüm markalar.",
   },
   {
-    id: 5,
-    question: "Küçük bir atölyeyim, yine de kullanabilir miyim?",
-    answer: "Kesinlikle. CraftOps'un 'Sadece Stok' modülü ile başlayıp, işler büyüdükçe finansal modülleri devreye alabilirsiniz. İhtiyacınız olmayan özelliklere para ödemezsiniz.",
-    category: "craftops",
-  },
-  {
-    id: 6,
-    question: "Verilerim güvende mi? Yedekleme nasıl yapılıyor?",
-    answer: "Verileriniz şifrelenmiş olarak bulut sunucularımızda saklanır. Günlük otomatik yedekleme yapılır ve 30 günlük yedek geçmişi tutulur. ISO 27001 standartlarına uygun güvenlik protokolleri uygularız.",
-    category: "security",
-  },
-  {
-    id: 7,
-    question: "Mevcut Excel tablolarımı aktarabilir miyim?",
-    answer: "Evet. Kurulum sürecinde Excel, CSV veya diğer formatlardan veri aktarımı yapılır. Verileriniz temizlenir, standardize edilir ve sisteme doğru şekilde girilir.",
-    category: "migration",
-  },
-  {
-    id: 8,
-    question: "Mobil uygulama var mı?",
-    answer: "Web tabanlı sistemimiz responsive tasarıma sahip ve mobil cihazlardan kullanılabilir. Native mobil uygulama 2025 roadmap'inde planlanmıştır.",
-    category: "technical",
+    no: "05",
+    title: "Teknik Bakım & Destek",
+    tagline: "Teslim sonrası da yanınızdayız.",
+    desc: "Site yayına girdikten sonra bitmez. Güncellemeler, içerik düzenlemeleri, teknik sorunlar ve küçük geliştirmeler için düzenli bakım ve hızlı destek. Dijital varlık diri kalır.",
+    deliverables: [
+      "Aylık Bakım Paketi",
+      "İçerik Güncelleme",
+      "Hata & Bug Giderimi",
+      "Performans İzleme",
+      "Öncelikli Destek Hattı",
+    ],
+    ideal: "Sitenin devamlılığını güvence altına almak isteyen markalar.",
   },
 ];
 
 // ============================================
-// NEDEN OPSİRON (Home Page)
+// STÜDYO DEĞERLERİ (About Page)
 // ============================================
-export const WHY_OPSIRON = [
+export const STUDIO_VALUES = [
   {
-    icon: "LayoutGrid",
-    title: "Modüler Mimari",
-    description: "İster sadece stok takibi yapın, ister kapsamlı finansal analizleri ekleyin. İhtiyacınız olmayan özelliklere para ödemezsiniz. Bir modülle başlayıp, işletme büyüdükçe genişletin.",
+    no: "01",
+    title: "Özgünlük",
+    desc: "Her marka için sıfırdan düşünmek. Hazır kalıpları tekrar tekrar satmamak.",
   },
   {
-    icon: "Zap",
-    title: "İşletmeye Özel Yapılandırma",
-    description: "Herkes için aynı şablon değil. Sizin reçete mantığınıza, üretim firelerinize ve tahsilat döngünüze göre özelleştirilmiş, yaşayan bir sistem.",
+    no: "02",
+    title: "Uyum",
+    desc: "Web sitesini markanın kimliği, tonu, hedef kitlesi ve hizmet modeliyle uyumlu kurmak.",
   },
   {
-    icon: "LineChart",
-    title: "Görünmeyen Kayıpları Görünür Kılın",
-    description: "Excel ve WhatsApp karmaşasında kaybolan stok hataları, unutulan ödemeler ve maliyet sızıntılarını tespit edin. 'Tahmini' değil 'Gerçek' kârlılığı görün.",
+    no: "03",
+    title: "İşlevsellik",
+    desc: "Sadece estetik değil; anlaşılır, hızlı, dönüşüm odaklı ve sürdürülebilir çözümler üretmek.",
+  },
+  {
+    no: "04",
+    title: "Süreklilik",
+    desc: "Teslim sonrası da destek vererek markanın dijital varlığını diri tutmak.",
+  },
+  {
+    no: "05",
+    title: "Kalite",
+    desc: "Boş alan kullanımı, tipografi, yapı, akış, hız, mobil deneyim — hepsi aynı standardın parçası.",
+  },
+  {
+    no: "06",
+    title: "Güven",
+    desc: '"Site yaptık bitti" hissi değil, "dijital tarafta arkamda biri var" hissi vermek.',
   },
 ];
 
 // ============================================
-// OPSİRON FARKI (About Page)
+// ÇALIŞMA SÜRECİ (About & Contact Pages)
 // ============================================
-export const OPSIRON_DIFFERENCE = [
-  "Sahada personeli yormayan arayüzler",
-  "Ürün altyapısı üzerine terzi işi kurulum",
-  "Operasyonel yükü azaltan otomasyonlar",
-  "Sadece veri giren değil, karar aldıran sistem",
-  "İşletmeyle birlikte büyüyen modüler yapı",
-];
-
-// ============================================
-// ÇALIŞMA MODELİ (About & Home Pages)
-// ============================================
-export const WORKING_MODEL = [
+export const WORKING_PROCESS = [
   {
     step: "01",
-    title: "Süreç Analizi",
-    description: "İşletmenizi ziyaret ediyor veya online toplantı ile operasyonunuzu, stok mantığınızı ve finans döngünüze hakim oluyoruz.",
+    title: "Keşif & Dinleme",
+    description:
+      "Markanızı, hedef kitlenizi, rakiplerinizi ve dijital hedeflerinizi dinleriz. Projenin doğru temelden başlaması için bu aşama kritiktir.",
   },
   {
     step: "02",
-    title: "Kapsam Belirleme",
-    description: "Sadece stok mu, sadece finansal takip mi, yoksa tam entegrasyon mu? CraftOps veya ServeOps modüllerinden hangilerine ihtiyacınız olduğunu seçiyoruz.",
+    title: "Vizyon & Kapsam",
+    description:
+      "Görsel yön, sayfa yapısı, hizmet kapsamı ve zaman planı birlikte netleştirilir. Herkesin aynı sayfada olduğundan emin olunur.",
   },
   {
     step: "03",
-    title: "Konfigürasyon",
-    description: "Sıfırdan yazmıyoruz, ayarlıyoruz. Alanlar, raporlar ve akışlar işletmenizin diline göre uyarlanıyor.",
+    title: "Tasarım",
+    description:
+      "Markanıza özel tipografi, renk sistemi ve UI tasarımı oluşturulur. Her bölüm, her detay markanın karakterini taşır.",
   },
   {
     step: "04",
-    title: "Devreye Alma & Eğitim",
-    description: "Geçmiş verilerinizi aktarıyor, ekibinize pratik kullanım eğitimi veriyor ve sistemi 'canlı'ya alıyoruz.",
+    title: "Geliştirme",
+    description:
+      "Tasarım, temiz ve ölçeklenebilir kod altyapısına dönüştürülür. SEO teknik altyapısı, performans ve erişilebilirlik baştan inşa edilir.",
   },
   {
     step: "05",
-    title: "Pilot Kullanım",
-    description: "İlk haftalarda yanınızdayız. Gerçek saha kullanımında ortaya çıkan ihtiyaçlara göre ince ayarlar yapıyoruz.",
+    title: "Test & İnceleme",
+    description:
+      "Tüm cihazlarda, tüm tarayıcılarda test edilir. İnce ayarlar yapılır. Sadece hazır göründüğünde değil, gerçekten hazır olduğunda yayına alınır.",
   },
   {
     step: "06",
-    title: "Süreklilik",
-    description: "Abonelik modeliyle düzenli güncellemeler, veri güvenliği ve teknik destek hizmetimiz devam ediyor.",
+    title: "Yayın & Destek",
+    description:
+      "Site yayına girer. Ama bu noktada biz çekilmeyiz. Teknik bakım, içerik güncellemeleri ve geliştirme talepleriniz için yanınızdayız.",
   },
-];
-
-// ============================================
-// NİHAİ HEDEFLER (About Page)
-// ============================================
-export const COMPANY_GOALS = [
-  "Operasyonel karmaşayı %80 oranında azaltmak",
-  "Stok kaçaklarını ve görünmez maliyetleri sıfırlamak",
-  "İşletme sahibine 'sürprizsiz' bir finansal tablo sunmak",
-  "Teknolojiyle büyüyen, sürdürülebilir işletmeler yaratmak",
-];
-
-// ============================================
-// SOSYAL KANIT (Social Proof)
-// ============================================
-export const BRAND_LOGOS = [
-  "KAVURHANELER",
-  "BUTİK ÜRETİCİLER",
-  "RESTORAN ZİNCİRLERİ",
-  "KAFELER",
 ];
 
 // ============================================
 // İLETİŞİM FORM SEÇENEKLERİ
 // ============================================
 export const CONTACT_FORM_OPTIONS = {
-  interestArea: [
-    { value: "craftops", label: "CraftOps (Üretim & Stok)" },
-    { value: "serveops", label: "ServeOps (Restoran & Hizmet)" },
-    { value: "consulting", label: "Genel Danışmanlık / Emin Değilim" },
+  serviceArea: [
+    { value: "web-design", label: "Web Tasarımı" },
+    { value: "web-development", label: "Web Geliştirme" },
+    { value: "design-and-development", label: "Tasarım + Geliştirme" },
+    { value: "maintenance", label: "Teknik Bakım & Destek" },
+    { value: "other", label: "Diğer / Emin Değilim" },
+  ],
+  budget: [
+    { value: "under-15k", label: "15.000 ₺ altı" },
+    { value: "15k-30k", label: "15.000 — 30.000 ₺" },
+    { value: "30k-60k", label: "30.000 — 60.000 ₺" },
+    { value: "60k-plus", label: "60.000 ₺ üzeri" },
+    { value: "undecided", label: "Henüz belirlemedim" },
   ],
 };
 
 // ============================================
-// SÜREÇ BİLGİLENDİRMESİ (Contact Page)
+// İLETİŞİM SÜRECİ BİLGİLENDİRMESİ
 // ============================================
 export const CONTACT_PROCESS = [
   {
     step: "1",
     title: "Ön İnceleme",
-    description: "Formdaki verilerinize göre işletmenizin yapısını analiz ederiz.",
+    description:
+      "Formdaki bilgilere göre markanızı ve ihtiyaçlarınızı ön değerlendirmeye alırız.",
   },
   {
     step: "2",
-    title: "Keşif Toplantısı",
-    description: "30 dakikalık online görüşmede sorunlarınızı dinler, çözüm haritası çıkarırız.",
+    title: "Keşif Görüşmesi",
+    description:
+      "30 dakikalık online görüşmede markanızı, hedeflerinizi ve beklentilerinizi dinleriz.",
   },
   {
     step: "3",
-    title: "Teklif & Demo",
-    description: "Size özel yapılandırılmış demo ortamı ve fiyat teklifini sunarız.",
+    title: "Teklif & Kapsam",
+    description:
+      "Görüşme sonrasında projenize özel kapsam belgesi ve fiyat teklifini sunarız.",
   },
 ];
 
 // ============================================
-// MOCK DATA (Demo Purposes)
+// CTA MESAJLARI
 // ============================================
-export const MOCK_DASHBOARD_DATA = {
-  craftops: {
-    productionWaste: "8.2%",
-    criticalStock: 3,
-    workshop: "Atölye A",
+export const CTA_MESSAGES = {
+  home: {
+    title: "Markanız dijitalde doğru görünmeli.",
+    subtitle:
+      "Hazır şablondan değil, markanızın kimliğinden doğan bir web sitesi için konuşalım.",
   },
-  serveops: {
-    status: "Geliştiriliyor",
-    dailySales: "POS Entegre",
+  about: {
+    title: "Dijitalde kendiniz gibi görünün.",
+    subtitle: "Markanızın karakterini birlikte inşa edelim.",
   },
+  work: {
+    title: "Sıradaki proje sizinki olabilir.",
+    subtitle: "Markanız için neler yapabileceğimizi konuşalım.",
+  },
+  services: {
+    title: "Hangi hizmet size uygun?",
+    subtitle:
+      "Tek bir sayfadan tüm dijital altyapıya — ihtiyacınızı birlikte belirleyelim.",
+  },
+};
+
+// ============================================
+// NAVIGATION MENU
+// ============================================
+export const NAVIGATION = [
+  { path: "/about", label: "Hakkımızda" },
+  { path: "/work", label: "Seçkin İşler" },
+  { path: "/services", label: "Uzmanlıklar" },
+  { path: "/contact", label: "İletişim" },
+];
+
+// ============================================
+// FOOTER LINKS
+// ============================================
+export const FOOTER_LINKS = {
+  studio: [
+    { path: "/about", label: "Hakkımızda" },
+    { path: "/work", label: "Seçkin İşler" },
+    { path: "/services", label: "Uzmanlıklar" },
+    { path: "/contact", label: "İletişim" },
+  ],
+  legal: [
+    { path: "/privacy", label: "Gizlilik Politikası" },
+    { path: "/terms", label: "Kullanım Koşulları" },
+    { path: "/kvkk", label: "KVKK" },
+  ],
 };
 
 // ============================================
@@ -466,79 +406,19 @@ export const LEGAL = {
 };
 
 // ============================================
-// CTA MESSAGES
-// ============================================
-export const CTA_MESSAGES = {
-  home: {
-    title: "Excel karmaşasına son verin.",
-    subtitle: "CraftOps ile üretimi, ServeOps ile geleceği planlayın. İşletmenize özel çözüm için hemen tanışalım.",
-  },
-  about: {
-    title: "İşletmenize uygun çözümü birlikte kuralım.",
-    subtitle: "İhtiyaç analizi için görüşelim. CraftOps veya ServeOps'un işletmenize neler katabileceğini konuşalım.",
-  },
-  craftops: {
-    title: "Sizin İçin Analiz Yapalım",
-    description: "Dağınık veriyi 'Tek Doğruluk Kaynağı'na dönüştürürüz.",
-  },
-  pricing: {
-    title: "Size uygun planı oluşturalım.",
-    subtitle: "İşletmenizin ölçeğine ve ihtiyacına göre en doğru maliyeti çıkarmak için tanışalım.",
-  },
-};
-
-// ============================================
-// NAVIGATION MENU
-// ============================================
-export const NAVIGATION = [
-  { path: "/", label: "Ana Sayfa" },
-  { path: "/about", label: "Hakkımızda" },
-  { path: "/craftops", label: "CraftOps" },
-  { path: "/serveops", label: "ServeOps" },
-  { path: "/pricing", label: "Fiyatlandırma" },
-  { path: "/contact", label: "İletişim" },
-];
-
-// ============================================
-// FOOTER LINKS
-// ============================================
-export const FOOTER_LINKS = {
-  products: [
-    { path: "/craftops", label: "CraftOps (Üretim)" },
-    { path: "/serveops", label: "ServeOps (Hizmet)" },
-  ],
-  corporate: [
-    { path: "/about", label: "Hakkımızda & Vizyon" },
-    { path: "/contact", label: "İletişim" },
-  ],
-  legal: [
-    { path: "/privacy", label: "Gizlilik Politikası" },
-    { path: "/terms", label: "Kullanım Koşulları" },
-    { path: "/kvkk", label: "KVKK" },
-  ],
-};
-
-// ============================================
-// EXPORT DEFAULT (Tüm içeriği tek objede)
+// EXPORT DEFAULT
 // ============================================
 export default {
   SITE_META,
   PAGE_SEO,
   CONTACT_INFO,
-  CRAFTOPS_FEATURES,
-  SERVEOPS_FEATURES,
-  PRICING_PLANS,
-  FAQ_DATA,
-  WHY_OPSIRON,
-  OPSIRON_DIFFERENCE,
-  WORKING_MODEL,
-  COMPANY_GOALS,
-  BRAND_LOGOS,
+  SERVICES,
+  STUDIO_VALUES,
+  WORKING_PROCESS,
   CONTACT_FORM_OPTIONS,
   CONTACT_PROCESS,
-  MOCK_DASHBOARD_DATA,
-  LEGAL,
   CTA_MESSAGES,
   NAVIGATION,
   FOOTER_LINKS,
+  LEGAL,
 };

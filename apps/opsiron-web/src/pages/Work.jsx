@@ -35,73 +35,29 @@ function SectionSeparator() {
 const PROJECTS = [
   {
     id: 1,
-    name: 'Aureline Studio',
-    category: 'Brand Website',
+    name: 'Edition Coffee',
+    category: 'E-Ticaret Sitesi',
     year: '2026',
-    tags: ['Branding', 'Web Design', 'React'],
-    description: 'Lüks güzellik markası için tasarım sisteminden web sitesine uzanan bütünleşik bir dijital kimlik inşası.',
-    image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2000&auto=format&fit=crop',
-    url: 'https://example.com',
+    tags: ['E-Ticaret', 'Yeme & İçme', 'Web Tasarım'],
+    description: 'Edition Coffee için modern ve kullanıcı dostu bir e-ticaret platformu.',
+    image: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=2000&auto=format&fit=crop',
+    url: 'https://editioncoffee.com.tr',
     size: 'large',
   },
   {
     id: 2,
-    name: 'Velmor Partners',
-    category: 'Corporate Presence',
+    name: 'Nuray Keser Gayrimenkul',
+    category: 'Kişisel Portfolyo ve İlanlar',
     year: '2026',
-    tags: ['Corporate', 'UI/UX', 'Next.js'],
-    description: 'Finans sektöründe faaliyet gösteren bir danışmanlık firması için güven odaklı, kurumsal bir web varlığı.',
-    image: 'https://images.unsplash.com/photo-1497366412874-3415097a27e7?q=80&w=2000&auto=format&fit=crop',
-    url: 'https://example.com',
+    tags: ['Emlak', 'Portfolyo', 'UI/UX'],
+    description: 'Emlakçı Nuray Keser için kendini tanıtabileceği ve ilanlarını paylaşabileceği kapsamlı bir web sitesi.',
+    image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=2000&auto=format&fit=crop',
+    url: 'https://nuraykeser.com',
     size: 'small',
-  },
-  {
-    id: 3,
-    name: 'Norvik Collective',
-    category: 'E-Commerce',
-    year: '2025',
-    tags: ['E-Commerce', 'Art Direction', 'Shopify'],
-    description: 'Skandinav estetiğinden ilham alan bağımsız bir mobilya kolektifi için minimal alışveriş deneyimi.',
-    image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?q=80&w=2000&auto=format&fit=crop',
-    url: 'https://example.com',
-    size: 'small',
-  },
-  {
-    id: 4,
-    name: 'Séquence Atelier',
-    category: 'Portfolio & Booking',
-    year: '2025',
-    tags: ['Portfolio', 'Animation', 'GSAP'],
-    description: 'Paris merkezli bir fotoğrafçı için hareket, ritim ve sessizliği bir arada sunan portfolyo ve rezervasyon platformu.',
-    image: 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?q=80&w=2000&auto=format&fit=crop',
-    url: 'https://example.com',
-    size: 'large',
-  },
-  {
-    id: 5,
-    name: 'Kael Systems',
-    category: 'SaaS Landing',
-    year: '2025',
-    tags: ['SaaS', 'Conversion', 'React'],
-    description: 'Kurumsal yapay zeka ürünü için dönüşüm odaklı, güveni ön plana çıkaran bir pazarlama sayfası.',
-    image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2000&auto=format&fit=crop',
-    url: 'https://example.com',
-    size: 'small',
-  },
-  {
-    id: 6,
-    name: 'Maison Elore',
-    category: 'Luxury Brand',
-    year: '2024',
-    tags: ['Luxury', 'Branding', 'Web Design'],
-    description: 'Özel davet üzerine çalışan Fransız bir parfüm markası için ultra lüks bir dijital vitrin deneyimi.',
-    image: 'https://images.unsplash.com/photo-1541643600914-78b084683702?q=80&w=2000&auto=format&fit=crop',
-    url: 'https://example.com',
-    size: 'small',
-  },
+  }
 ];
 
-const ALL_CATEGORIES = ['Tümü', 'Brand Website', 'Corporate Presence', 'E-Commerce', 'Portfolio & Booking', 'SaaS Landing', 'Luxury Brand'];
+const ALL_CATEGORIES = ['Tümü', 'E-Ticaret Sitesi', 'Kişisel Portfolyo ve İlanlar'];
 
 // --- Work Sayfası ---
 
@@ -211,8 +167,6 @@ const WorkPage = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8">
               {filtered.map((project, idx) => {
-                // Büyük-küçük grid düzeni: büyük projeler 7 kolon, küçükler 5 kolon
-                // Satır başlarında değişimli sıralama
                 const isLarge = project.size === 'large';
                 const colSpan = isLarge ? 'md:col-span-7' : 'md:col-span-5';
                 const aspectClass = isLarge ? 'aspect-[16/10]' : 'aspect-[4/3]';
@@ -221,7 +175,6 @@ const WorkPage = () => {
                   <div
                     key={project.id}
                     className={`group cursor-pointer flex flex-col bg-[#FFFFFF] p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] transition-all duration-500 ${colSpan} ${
-                      // Offset: çift indexli büyük projeler üste kayar
                       isLarge && idx % 2 === 0 ? '' : isLarge ? 'md:self-end' : idx % 3 === 1 ? 'md:mt-16' : ''
                     }`}
                     onClick={() => handleProjectClick(project.name, project.url)}
