@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { CONTACT_INFO } from '../../constants/content';
+import { CONTACT_INFO } from '../constants/content';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
